@@ -1,0 +1,11 @@
+Webots Proto Cache File version 1.4
+protoFileHash: 15361e3207de9ea0b21a85e9cf4f3888
+containsDevices: 1
+baseType: Robot
+slotType: 
+parameters: translation,rotation,name,controller,controllerArgs,customData,supervisor,synchronization,bodySlot,cameraSlot,e_channel,r_channel
+tags: static
+license:  Copyright Cyberbotics Ltd. Licensed for use only with Webots.
+licenseUrl:  https://cyberbotics.com/webots_assets_license
+documentationUrl: 
+info: A\squadcopter\sdrone\smounted\swith\sa\smotorized\scamera\sby\sthe\sDJI\scompany.\n
