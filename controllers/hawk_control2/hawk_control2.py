@@ -10,143 +10,7 @@ from controller import Robot,Camera,CameraRecognitionObject,Compass,GPS,Gyro,Ine
 import lab3
 from scipy.spatial import distance
 
-hippo_radius = 12
-hound_radius = 3
 
-class Point: 
-    def __init__(self, x, y): 
-        self.x = x 
-        self.y = y 
-  
-# Given three colinear points p, q, r, the function checks if  
-# point q lies on line segment 'pr'  
-def onSegment(p, q, r): 
-    if ( (q.x <= max(p.x, r.x)) and (q.x >= min(p.x, r.x)) and 
-           (q.y <= max(p.y, r.y)) and (q.y >= min(p.y, r.y))): 
-        return True
-    return False
-
-#check orientation of the ordered tripplet  
-def orientation(p, q, r): 
-      
-    val = (float(q.y - p.y) * (r.x - q.x)) - (float(q.x - p.x) * (r.y - q.y)) 
-    if (val > 0): 
-          
-        # Clockwise orientation 
-        return 1
-    elif (val < 0): 
-          
-        # Counterclockwise orientation 
-        return 2
-    else: 
-          
-        # Colinear orientation 
-        return 0
-
-#function to check crossing between hippo and hound path. A path is from one node to another node.  
-# The main function that returns true if the line segment 'p1q1' and 'p2q2' intersect. 
-def doIntersect(p1,q1,p2,q2): 
-      
-    # Find the 4 orientations required for  
-    # the general and special cases 
-    o1 = orientation(p1, q1, p2) 
-    o2 = orientation(p1, q1, q2) 
-    o3 = orientation(p2, q2, p1) 
-    o4 = orientation(p2, q2, q1) 
-  
-    # General case 
-    if ((o1 != o2) and (o3 != o4)): 
-        return True
-  
-    # Special Cases 
-  
-    # p1 , q1 and p2 are colinear and p2 lies on segment p1q1 
-    if ((o1 == 0) and onSegment(p1, p2, q1)): 
-        return True
-  
-    # p1 , q1 and q2 are colinear and q2 lies on segment p1q1 
-    if ((o2 == 0) and onSegment(p1, q2, q1)): 
-        return True
-  
-    # p2 , q2 and p1 are colinear and p1 lies on segment p2q2 
-    if ((o3 == 0) and onSegment(p2, p1, q2)): 
-        return True
-  
-    # p2 , q2 and q1 are colinear and q1 lies on segment p2q2 
-    if ((o4 == 0) and onSegment(p2, q1, q2)): 
-        return True
-  
-    # If none of the cases 
-    return False
-
-#p1 is from hound, p2 is from hippo.
-#return true if for center p1 of hound, center p2 of hippo, then collide
-def check_two_circles_intersect(p1,p2):
-    if pow(hippo_radius - hound_radius,2) <= (pow((p1.x - p2.x),2) + pow((p1.y - p2.y),2)) <= pow(hippo_radius - hound_radius,2):
-        return True
-    else:
-        return False
-
-#it is a line segment
-def check_line_intersect_circle(p1,p2,center,radius):
-    ax = p1.x
-    ay = p1.y
-    bx = p1.x
-    by = p1.y
-    cx = center.x
-    cy = center.y
-    r = radius
-    
-    ax -= cx;
-    ay -= cy;
-    bx -= cx;
-    by -= cy;
-    a = (bx - ax)^2 + (by - ay)^2;
-    b = 2*(ax*(bx - ax) + ay*(by - ay));
-    c = ax^2 + ay^2 - r^2;
-    disc = b^2 - 4*a*c;
-    if(disc <= 0):
-        return False;
-    sqrtdisc = pow(disc,2);
-    t1 = (-b + sqrtdisc)/(2*a);
-    t2 = (-b - sqrtdisc)/(2*a);
-    if((0 < t1 and t1 < 1) or (0 < t2 and t2 < 1)): return True;
-    return False;
-
-def swap(A,B):
-    temp = B
-    B.x = A.x
-    B.y = A.y
-    A.x = temp.x
-    A.y = temp.y
-    return A,B
-
-#A,B are top, C,D are bottom
-def pointInRectangle(P,A,B,C,D):
-    if A.x > B.x:
-        [A,B] = swap(A,B)                        
-    if A.y < C.y:
-        [A,C] = swap(A,C)
-    if A.x <= P.x <= B.x and C.y <= P.y <= A.y:
-        return True
-    return False
-         
-def intersect(P,R,A,B,C,D):
-    if pointInRectangle(P,A,B,C,D) or check_line_intersect_circle(A,B,P,R) or check_line_intersect_circle(B,C,P,R) or check_line_intersect_circle(C,D,P,R) or check_line_intersect_circle(D,A,P,R):
-       return True
-    return False
-
-#robot 1 is moving, while robot 2 is stationary. check if a rectangle overlap the circle or not.
-def check_robot_is_moving(p1,p2,radius1,center,radius2):
-    A = Point(p2.x - radius1, p2.y)
-    B = Point(p2.x + radius1, p2.y)
-    C = Point(p1.x - radius1, p1.y)
-    D = Point(p1.x + radius1, p1.y)
-    return intersect(center,radius2, A,B,C,D)
-        
-
-
-#function for stabalizing
 def get_goal_state(corners, fov):
     length = distance.euclidean(corners[0], corners[1])
     width = distance.euclidean(corners[0], corners[3])
@@ -197,7 +61,7 @@ rear_left_motor = robot.getMotor("rear left propeller");
 rear_right_motor = robot.getMotor("rear right propeller");
 motors = {front_left_motor, front_right_motor, rear_left_motor, rear_right_motor};
 
-corners = [(-2.75, -3), (2.5, -3), (2.5,3.5), (-2.75, 3.5)]
+corners = [(-1.5, -.5), (4, -.5), (4,3), (-1, 3)]
 
 hover_zone = get_goal_state(corners, 1)
 
@@ -253,7 +117,7 @@ for k in range(camx):
         
 latch = False
 
-rende = (1.5 , 2.25)
+rende = (4 , 3)
 request = False
 hover1 = 0
 hover_mode = False
@@ -348,7 +212,7 @@ while robot.step(timestep) != -1 and killswitch != 1:
         #print("\n Recognized ",number_of_objects, " objects." );
         if number_of_objects > 0:
                 objects = camera.getRecognitionObjects()
-        #initialize        
+
         for k in range(camx):
             for l in range(camy):
                 configSpace[k][l] = 0
@@ -486,6 +350,10 @@ while robot.step(timestep) != -1 and killswitch != 1:
     rear_left_motor.setVelocity(-rear_left_motor_input)
     rear_right_motor.setVelocity(rear_right_motor_input)
   
+
+
+
+
     # Process sensor data here.
 
     # Enter here functions to send actuator commands, like:
@@ -493,3 +361,4 @@ while robot.step(timestep) != -1 and killswitch != 1:
     
 
 # Enter here exit cleanup code.
+
