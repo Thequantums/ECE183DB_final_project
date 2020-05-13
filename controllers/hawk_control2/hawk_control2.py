@@ -9,7 +9,10 @@ import numpy as np
 from controller import Robot,Camera,CameraRecognitionObject,Compass,GPS,Gyro,InertialUnit,Keyboard,LED,Motor
 import lab3
 from scipy.spatial import distance
+import collision_geometry as cg
 
+hound_radius = 1 #should be in meter
+hippo_radius = 0.25 #should be in meter
 
 def get_goal_state(corners, fov):
     length = distance.euclidean(corners[0], corners[1])
@@ -67,18 +70,15 @@ hover_zone = get_goal_state(corners, 1)
 
 print(hover_zone)
 
-
-for m in motors: 
+for m in motors:
     m.setPosition(math.inf);
     m.setVelocity(1.0);
-    
+
 while (robot.step(timestep) != -1):
     if (robot.getTime() > 1.0):
         break
-  
 
-
-print("Start the drone...");  
+print("Start the drone...");
 
 #print("You can control the drone with your computer keyboard:")
 #print("- 'up': move forward.")
@@ -92,12 +92,12 @@ print("Start the drone...");
 
 roll_trim = 0.07 #positive is right
 pitch_trim = 0.15 #positive is backwards
-k_vertical_thrust = 68.5  
-k_vertical_offset = 0.6   
-k_vertical_p = 3.0        
-k_roll_p = 50.0           
-k_pitch_p = 30.0 
-killswitch = 0.0         
+k_vertical_thrust = 68.5
+k_vertical_offset = 0.6
+k_vertical_p = 3.0
+k_roll_p = 50.0
+k_pitch_p = 30.0
+killswitch = 0.0
 
 target_yaw = imu.getRollPitchYaw()[2] +.02
 
@@ -114,7 +114,7 @@ for k in range(camx):
     for l in range(camy):
         configtemp.append(0)
     configSpace.append(configtemp)
-        
+
 latch = False
 
 rende = (4 , 3)
@@ -138,9 +138,9 @@ while robot.step(timestep) != -1 and killswitch != 1:
     # Enter here functions to read sensor data, like:
     #  val = ds.getValue()
     time = robot.getTime()
-    
-    
-    
+
+
+
     roll = imu.getRollPitchYaw()[0] + (math.pi / 2.0)
     pitch = imu.getRollPitchYaw()[1]
     yaw = imu.getRollPitchYaw()[2]
@@ -149,26 +149,26 @@ while robot.step(timestep) != -1 and killswitch != 1:
     z = gps.getValues()[2]
     roll_acceleration = gyro.getValues()[0]
     pitch_acceleration = gyro.getValues()[1]
-    
+
     x = gps.getValues()[0]
 
-    
+
     led_state = int(time) % 2
     front_left_led.set(led_state)
     front_right_led.set(~led_state)
 
-    
+
     camera_roll_motor.setPosition( -0.115 * roll_acceleration)
     camera_pitch_motor.setPosition(-0.1 * pitch_acceleration)
     compVal = compass.getValues()
     heading = ((math.atan2(compVal[0],compVal[1]))+math.pi)*(180/math.pi)
-    
+
     roll_disturbance = 0.0
     pitch_disturbance = 0.0
     yaw_disturbance = 0.0
-    
+
     altitude_error = abs(altitude - target_altitude)
-    
+
     if altitude_error < .4 and not hover_mode:
         hover1 = hover1 + 1
         if hover1 > 100:
@@ -177,11 +177,11 @@ while robot.step(timestep) != -1 and killswitch != 1:
     elif altitude_error >= .5:
         hover1 = 0
         hover_mode = False
-        
+
     if done and hover_mode and x_good and z_good:
         killswitch = 1
 
-    x_error = target_x - x    
+    x_error = target_x - x
     if hover_mode:
         if abs(x_error) < .1 and not x_good:
             x1 = x1 + 1
@@ -192,9 +192,9 @@ while robot.step(timestep) != -1 and killswitch != 1:
             x1 = 0
             x_good = False
             pitch_disturbance = max(min(x_error, 2), -2)
-            
-            
-    z_error = target_z - z    
+
+
+    z_error = target_z - z
     if hover_mode and x_good:
         if abs(z_error) < .04 and not z_good:
             z1 = z1 + 1
@@ -206,7 +206,7 @@ while robot.step(timestep) != -1 and killswitch != 1:
             z1 = 0
             z_good = False
             roll_disturbance = -max(min(z_error, 1.5), -1.5)
-            
+
     if request and not done:
         number_of_objects = camera.getRecognitionNumberOfObjects();
         #print("\n Recognized ",number_of_objects, " objects." );
@@ -216,7 +216,7 @@ while robot.step(timestep) != -1 and killswitch != 1:
         for k in range(camx):
             for l in range(camy):
                 configSpace[k][l] = 0
-        
+
        #using webots super camera
         for i in objects:
             pptr = int(i.position)
@@ -252,7 +252,7 @@ while robot.step(timestep) != -1 and killswitch != 1:
                     for cdy in range(centy-ydist,centy+ydist):
                         if(cdx>=0 and cdx<camx and cdy>=0 and cdy<camy):
                             configSpace[cdx][cdy] = 1;
-                        
+
         data = np.array(configSpace)
         data = np.transpose(data)
         #calling to map the RRT
@@ -271,46 +271,51 @@ while robot.step(timestep) != -1 and killswitch != 1:
 
             # Translating to worlds coordinates
 
-            # x,y,delta,parent,Fifth field is a list containing potential crush [x,y],6th field is a list containing static collision between hippo and hound when they stay at their nodes
+            # each node has the form of: x, y, delta, parent, type A conflicts nodes, type B conflict nodes, type C conflict nodes.
+            #Type A: attemp_to_go_conflict_node (Crossing path) (list)
+            #Type B: driving conflict node (list)
+            #Type C: arriving conflict node (list)
             # 7th field is to store the potential nodes of colliding while driving
+            #Append three empty lists to each nodes. The three lists are for storing type A, type B, type C conflicts nodes
             for i in range(len(hound_path)):
-                potential_crushing_nodes = []
-                hound_path[i].append(potential_crushing_nodes)
-                colliding_nodes = []
-                hound_path[i].append(colliding_nodes)
-                hound_path[i].append(colliding_nodes)
+                hound_path[i].extend(([],[],[]))
 
             for i in range(len(hippo_path)):
-                potential_crushing_nodes = []
-                hippo_path[i].append(potential_crushing_nodes)
-                colliding_nodes = []
-                hippo_path[i].append(colliding_nodes)
-                hippo_path[i].append(colliding_nodes)
+                hippo_path[i].extend(([],[],[]))
 
-            # Four cases to check for
-            # checking for intersecting paths between the two trajectories and mark the path.
+            #Mark the conflict nodes and exchange information between hound and hippo
             for i in range(len(hound_path) - 1):
+                init_hound = cg.Point(hound_path[i][0], hound_path[i][1]) #point of current node of hound
+                final_hound = cg.Point(hound_path[i + 1][0], hound_path[i + 1][1]) #point of next node of hound
                 for j in range(len(hippo_path) - 1):
-                    # this function takes in 8 arguments, x intial and y intial from hound, x final and y final from hound; x intial and y intial from hippo, x final and y final from hippo
-                    init_hound = Point(hound_path[i][0], hound_path[i][1])
-                    final_hound = Point(hound_path[i + 1][0], hound_path[i + 1][1])
-                    init_hippo = Point(hippo_path[j][0], hippo_path[j][1])
-                    final_hippo = Point(hippo_path[j + 1][0], hippo_path[j + 1][1])
-                    if doIntersect(init_hound, final_hound, init_hippo, final_hippo):
-                        # append the potential crushing node of hippo, there could be more than one potential crushing node
+                    init_hippo = cg.Point(hippo_path[j][0], hippo_path[j][1]) #point of current node of hippo
+                    final_hippo = cg.Point(hippo_path[j + 1][0], hippo_path[j + 1][1]) #point of next node of hippo
+                    if cg.doIntersect(init_hound, final_hound, init_hippo, final_hippo):
+                        # paths crossed between hound and hippo. This create a type A conflict
                         hound_path[i][4].append([init_hippo.x, init_hippo.y])
-                        # append the potential crushing node of hound
                         hippo_path[j][4].append([init_hound.x, init_hound.y])
-                    if check_two_circles_intersect(init_hound, init_hippo):
-                        # two circles intersect for that state, share each other information, to check for during execution
+                    if cg.check_two_circles_intersect(init_hound,hound_radius,init_hippo,hippo_radius):
+                        # if a hound and a hippo occupied a node with their respective radii, then it overlaps
                         hound_path[i][5].append([init_hippo.x, init_hippo.y])
                         hippo_path[j][5].append([init_hound.x, init_hound.y])
-                    if check_robot_is_moving(init_hound, final_hound, hound_radius, init_hippo, hippo_radius):
-                        # hound is moving from inital node to final node, check if hippo in j node can cause collision
+                    if cg.check_robot_is_moving(init_hound, final_hound, hound_radius, init_hippo, hippo_radius):
+                        # hound is moving from inital node to next node, check if hippo is stationary in j node can overlap the path hound is moving
                         hound_path[i][6].append([init_hippo.x, init_hippo.y])
-                    if check_robot_is_moving(init_hippo, final_hippo, hippo_radius, init_hound, hound_radius):
-                        # hippo is moving from inital node to final node, check if hound in i node can cause collision
+                    if cg.check_robot_is_moving(init_hippo, final_hippo, hippo_radius, init_hound, hound_radius):
+                        # hippo is moving from inital node to next node, check if hound is stationary in i node can overlap the path hippo is moving
                         hippo_path[j][6].append([init_hound.x, init_hound.y])
+
+            #check type B conflicts for goal node of hound and hippo
+            hound_goal_node = cg.Point(hound_path[len(hound_path) -1].x,hound_path[len(hound_path) -1].y)
+            hippo_goal_node = cg.Point(hippo_path[len(hippo_path) -1].x, hippo_path[len(hippo_path) -1].y)
+            for i in range(len(hippo_path)):
+                init_hippo = cg.Point(hippo_path[i][0], hippo_path[i][1]) #point of current node of hippo
+                if cg.doIntersect(hound_goal_node,hound_radius,init_hippo,hippo_radius):
+                    hound_path[len(hound_path) - 1][5].append([init_hippo.x, init_hippo.y])
+            for i in range(len(hound_path)):
+                init_hound = cg.Point(hound_path[i][0], hound_path[i][1])
+                if cg.doIntersect(hippo_goal_node, hippo_radius, init_hound, hound_radius):
+                    hippo_path[len(hippo_path) - 1][5].append([init_hound.x, init_hound.y])
 
             # send the hound and hippo path to hound and hippo.
 
@@ -320,7 +325,7 @@ while robot.step(timestep) != -1 and killswitch != 1:
             z_good = False
             target_x = rende[0]
             target_z = rende[1]
-        
+
     if done and x_good and z_good:
         target_altitude = 1
         hover_mode = False
@@ -332,24 +337,24 @@ while robot.step(timestep) != -1 and killswitch != 1:
     clamped_difference_altitude = max(min(target_altitude - altitude + k_vertical_offset, 1), -1)
     vertical_input = k_vertical_p * math.pow(clamped_difference_altitude, 3.0)
 
-    
+
     front_left_motor_input = k_vertical_thrust + vertical_input - roll_input - pitch_input + yaw_input
     front_right_motor_input = k_vertical_thrust + vertical_input + roll_input - pitch_input - yaw_input
     rear_left_motor_input = k_vertical_thrust + vertical_input - roll_input + pitch_input - yaw_input
     rear_right_motor_input = k_vertical_thrust + vertical_input + roll_input + pitch_input + yaw_input
-   
+
     if(killswitch == 1):
         front_left_motor_input = 0.0;
         front_right_motor_input = 0.0;
         rear_left_motor_input = 0.0;
         rear_right_motor_input = 0.0;
-    
+
 
     front_left_motor.setVelocity(front_left_motor_input)
     front_right_motor.setVelocity(-front_right_motor_input)
     rear_left_motor.setVelocity(-rear_left_motor_input)
     rear_right_motor.setVelocity(rear_right_motor_input)
-  
+
 
 
 
@@ -358,7 +363,6 @@ while robot.step(timestep) != -1 and killswitch != 1:
 
     # Enter here functions to send actuator commands, like:
     #  motor.setPosition(10.0)
-    
+
 
 # Enter here exit cleanup code.
-
