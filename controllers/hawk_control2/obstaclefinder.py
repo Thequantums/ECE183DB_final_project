@@ -93,9 +93,9 @@ class imgToObs():
         ycent = math.ceil(y/2)
         dist = max(xcent,ycent)
         #pad obsspace to prevent rollover
-        print(np.shape(obsSpace))
+        #print(np.shape(obsSpace))
         obs = np.pad(obsSpace,((dist,dist),(dist,dist)),'constant',constant_values=0)
-        print(np.shape(obs))
+        #print(np.shape(obs))
         #pad robot shape with zeros, to fix rotation
         robot = np.ones((y, x))
         space = np.zeros((y, x))
@@ -117,7 +117,7 @@ class imgToObs():
             newobsy = []
             for y in range(0,np.shape(obs)[0]):
                 newobst = []
-                for i in range(0, 180,45):
+                for i in range(0, 90,45):
                     newobst.append(np.any(np.logical_and(obs, robotAngles[i])))
                 obs = np.roll(obs,-1,axis = 0)
                 newobsy.append(newobst)
@@ -141,6 +141,8 @@ class imgToObs():
         plt.imshow(np.squeeze(deobs[1]).T, interpolation='nearest')
         plt.show()
         print(newobs)
+
+        return np.array(deobs)
 
 if __name__ == "__main__":
     o = imgToObs(imagepath = "C:/Users/Cooper/PycharmProjects/183Final/controllers/hawk_control2/testmaze.png")

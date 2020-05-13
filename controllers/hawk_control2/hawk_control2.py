@@ -130,7 +130,8 @@ z_good = False
 
 done = False
 
-
+houndstart = [0,0]
+hippostart = [0,0]
 # Main loop:
 # - perform simulation steps until Webots is stopping the controller
 while robot.step(timestep) != -1 and killswitch != 1:
@@ -166,6 +167,9 @@ while robot.step(timestep) != -1 and killswitch != 1:
     roll_disturbance = 0.0
     pitch_disturbance = 0.0
     yaw_disturbance = 0.0
+
+
+
 
     altitude_error = abs(altitude - target_altitude)
 
@@ -244,7 +248,7 @@ while robot.step(timestep) != -1 and killswitch != 1:
             print(i.get_colors())
             if(i.get_colors() == [1,1,1]):
                 houndstart = [centx,camy - centy]
-            if (i.get_colors() == [0, 0, 0]):
+            elif (i.get_colors() == [0, 0, 0]):
                 hippostart = [centx,camy - centy]
             if(i.get_colors() == [1,0,0]):
                 #getting configspace for obstacles
@@ -256,8 +260,8 @@ while robot.step(timestep) != -1 and killswitch != 1:
         data = np.array(configSpace)
         data = np.transpose(data)
         #calling to map the RRT
-        path = lab3.runRRT( 'exxample' ,1, data,houndstart,[400,400])
-        path = lab3.runRRT('exxample', 1, data, hippostart, [400,400])
+        path = lab3.runRRT('HOUND', [5,5], data, houndstart, [830,1130])
+        path = lab3.runRRT('HIPPO', [20,20], data, hippostart, [830,1130])
         print(path)
         if False:
             # COLLISION AVOIDANCE CODE
@@ -326,6 +330,7 @@ while robot.step(timestep) != -1 and killswitch != 1:
             target_x = rende[0]
             target_z = rende[1]
 
+        done = True
     if done and x_good and z_good:
         target_altitude = 1
         hover_mode = False

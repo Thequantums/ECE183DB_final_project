@@ -9,13 +9,16 @@ robotradius = 25
 scale = 5      #set scale-up to increase obstacle accuracy
 
 
-def runRRT(dynamics, scale, data ,start = [0,50],end = [1950,1650]):
+def runRRT(dynamics, robotSize, data ,start = [0,50],end = [1950,1650]):
     #set scale-up to increase obstacle accuracy
     data = data[::-1,:]
     plt.imshow(data,interpolation='nearest') #show 2D representation of map
+    #img = obstaclefinder.imgToObs()  # create img from imported picture
+    #obs = img.obsSpaceGen(robotSize, data,10)
+
     #initialize RRT
     r = RRT.rrt(N = 5000,obstacles = data.T, obstacletype = 'array', maxcoords = data.shape,
-            origin = start+[0,0,'',0],goal = end+[0], live = False, divis = 10, scale = scale)
+            origin = start+[0,0,'',0],goal = end+[0], live = False, divis = 10)
     #Perform RRT
     trajectory = r.rrt( dynamics,plotting = True,verbose = True)
     #print trajectory
