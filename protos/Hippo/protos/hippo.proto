@@ -8,12 +8,13 @@ PROTO hippo [
   field SFVec3f    translation     0 0.12 0      # Is `Transform.translation`.
   field SFRotation rotation        1 0 0 -1.5708 # Is `Transform.rotation`.
   field SFString   name            "youBot"      # Is `Solid.name`.
-  field SFString   controller      "hippo_controller"      # Is `Robot.controller`.
+  field SFString   controller      "hippoer"      # Is `Robot.controller`.
   field SFString   controllerArgs  ""            # Is `Robot.controllerArgs`.
   field SFString   customData      ""            # Is `Robot.customData`.
   field SFBool     supervisor      FALSE         # Is `Robot.supervisor`.
   field SFBool     synchronization TRUE          # Is `Robot.synchronization`.
   field MFNode     bodySlot        []            # Extends the robot with new nodes in the body slot.
+  field MFColor    RecognitionColors []
   field SFFloat    bodyMass        22
   field SFInt32    e_channel      1 
   field SFInt32    r_channel      1
@@ -57,66 +58,6 @@ Robot {
       name "wheel4"
       sensorName "wheel4sensor"
     }
-    DEF PLATE Solid {
-      translation -0.155 0 0
-      children [
-        PlateMesh {
-        }
-      ]
-      name "plate"
-      boundingObject Group {
-        children [
-          Transform {
-            translation 0.008 0 0.045
-            children [
-              Box {
-                size 0.25 0.17 0.007
-              }
-            ]
-          }
-          Transform {
-            translation -0.015 0.112 0.045
-            rotation 0 0 1 -0.13
-            children [
-              Box {
-                size 0.17 0.08 0.007
-              }
-            ]
-          }
-          Transform {
-            translation -0.015 -0.112 0.045
-            rotation 0 0 1 0.13
-            children [
-              Box {
-                size 0.17 0.08 0.007
-              }
-            ]
-          }
-          Transform {
-            translation 0.076 0.084 0.045
-            rotation 0 0 1 0.81
-            children [
-              Box {
-                size 0.08 0.08 0.007
-              }
-            ]
-          }
-          Transform {
-            translation 0.076 -0.084 0.045
-            rotation 0 0 1 -0.81
-            children [
-              Box {
-                size 0.08 0.08 0.007
-              }
-            ]
-          }
-        ]
-      }
-      physics Physics {
-        density -1
-        mass 0.5
-      }
-    }
     Emitter {
       channel IS e_channel
     }
@@ -156,9 +97,7 @@ Robot {
       0 0 0
     ]
   }
-  recognitionColors [
-    0 0 0
-  ]
+  recognitionColors IS RecognitionColors
   controller IS controller
   controllerArgs IS controllerArgs
 }
