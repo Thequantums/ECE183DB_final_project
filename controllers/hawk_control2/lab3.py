@@ -19,7 +19,7 @@ r = RRT.rrt(N = 5000,obstacles = obsimg, obstacletype = 'array', maxcoords = ima
 #print('ORIGIN',r.origin)
 #test = r.origin
 #Perform RRT
-trajectory = r.rrt([175,1075,0,0,'',0],verbose = True,plotting=True)
+trajectory = r.rrt('HAWK',verbose = True,plotting=True)
 #print('ORIGIN AFTER',r.origin,'ORIGIN BEFORE', test)
 #print trajectory
 #print(trajectory)
