@@ -467,8 +467,11 @@ class rrt():
                 self.nodesList.append(xnew)
             if verbose == True: #debug info, only dump if verbose
                 print(k)
+        print('where do we go now')
         if plotting == True:# Plot if that's enabled
+
             self.drawparentlines(self.nodesList)
+
             if goalbool:
                 plt.plot(xg, yg, 'y')
             if self.live:   #If live, draw the goal to the live graph
@@ -476,9 +479,11 @@ class rrt():
                  plt.pause(0.01)
                  plt.ioff()
             plt.show()
+
             xg = (np.array(xg) / self.scale).tolist()   #scale trajectory down from increased scale
             yg = (np.array(yg) / self.scale).tolist()
             trajectory = []
             for i in range(0,len(xg)):
                 trajectory.append([xg[i],yg[i],tg[i],sg[i]])
+
         return trajectory[::-1] #return the trajectory to the goal (reverse it, its in goal -> origin order until this line
