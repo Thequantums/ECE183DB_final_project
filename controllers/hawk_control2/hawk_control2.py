@@ -61,7 +61,7 @@ rear_left_motor = robot.getMotor("rear left propeller");
 rear_right_motor = robot.getMotor("rear right propeller");
 motors = {front_left_motor, front_right_motor, rear_left_motor, rear_right_motor};
 
-corners = [(-1.5, -1), (4, -1), (4,3.5), (-1, 3.5)]
+corners = [(-1.5, -.5), (4, -.5), (4,3), (-1, 3)]
 
 hover_zone = get_goal_state(corners, 1)
 
