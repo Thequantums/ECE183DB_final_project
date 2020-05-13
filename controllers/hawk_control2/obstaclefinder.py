@@ -113,27 +113,38 @@ class imgToObs():
         plt.show()
         #check all angles for robotAngles
         newobs = []
-        for x in range(0, round(np.shape(obsSpace)[0]/50)):
+        for x in range(0, np.shape(obs)[1]):
             newobsy = []
-            for y in range(0,round(np.shape(obsSpace)[1]/50)):
+            for y in range(0,np.shape(obs)[0]):
                 newobst = []
                 for i in range(0, 180,45):
                     newobst.append(np.any(np.logical_and(obs, robotAngles[i])))
-                obs = np.roll(obs,50,axis = 0)
+                obs = np.roll(obs,-1,axis = 0)
                 newobsy.append(newobst)
                 print('Y:',y)
-            obs = np.roll(obs, 50, axis = 1)
+            obs = np.roll(obs, -1, axis = 1)
             newobs.append(newobsy)
             print("X:",x)
+        newobs = np.array(newobs)
+        newobs = np.roll(newobs,2*dist,axis=0)
+        newobs = np.roll(newobs,2*dist, axis=1)
+        newobs = newobs[0:-2*dist,0:-2*dist]
         print("done")
         print(np.shape(np.array(newobs)))
-        [d1,d2,d3] = np.shape(newobs.T)
+        [d1,d2,d3] = np.shape(newobs)
         print(np.any(newobs))
-        deobs = np.dsplit(np.array(newobs).T,d3)
+        deobs = np.dsplit(np.array(newobs),d3)
         print(deobs)
         print(np.shape(np.squeeze(deobs[0])))
-        plt.imshow(np.squeeze(deobs[0]),interpolation='nearest')
+        plt.imshow(np.squeeze(deobs[0]).T,interpolation='nearest')
         plt.show()
-        plt.imshow(np.squeeze(deobs[2]), interpolation='nearest')
+        plt.imshow(np.squeeze(deobs[1]).T, interpolation='nearest')
         plt.show()
         print(newobs)
+
+if __name__ == "__main__":
+    o = imgToObs(imagepath = "C:/Users/Cooper/PycharmProjects/183Final/controllers/hawk_control2/testmaze.png")
+    gray = cv2.cvtColor(o.image, cv2.COLOR_BGR2GRAY)
+    plt.imshow(np.array(gray))
+    plt.show()
+    o.obsSpaceGen([20,20],np.logical_not(np.array(gray)))

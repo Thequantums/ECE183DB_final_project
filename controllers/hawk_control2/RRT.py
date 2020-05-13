@@ -115,7 +115,7 @@ class rrt():
                     return True
         return False
 
-    def takestep2(self,startnode, targetnode, nodes):  # finds a point one unit step from startnode, in the direction of targetnode. Takes "node" in order to set new node's parent node in node[2]
+    def takestepHOUND(self,startnode, targetnode, nodes):  # finds a point one unit step from startnode, in the direction of targetnode. Takes "node" in order to set new node's parent node in node[2]
         dt = 0.01       #Timestep in seconds
         endtime = 1     #endtime in seconds
         instructionVector = []  #vector for instructions
@@ -189,6 +189,94 @@ class rrt():
         condVector = [instructionVector[0]]
         for vec in instructionVector:
             if condVector[-1][0]==vec[0] and condVector[-1][1]==vec[1]:
+                condVector[-1][2] = condVector[-1][2] + vec[2]
+            else:
+                condVector.append(vec)
+
+        currentPos[4] = condVector
+        return currentPos
+
+    def takestepHIPPO(self, startnode, targetnode,
+                      nodes):  # finds a point one unit step from startnode, in the direction of targetnode. Takes "node" in order to set new node's parent node in node[2]
+        dt = 0.01  # Timestep in seconds
+        endtime = 1  # endtime in seconds
+        instructionVector = []  # vector for instructions
+        # Full spin and Full velocity
+        theta_dot = 2.979 / 4
+        V = 126.6
+        currentPos = [startnode[0], startnode[1], startnode[2], self.nodesList.index(startnode), '',
+                      0]  # initialize currentPosition to startPosition
+        prevPos = currentPos  # initialize prevPos to currentPos
+        theta_path = math.atan2(targetnode[1] - startnode[1],
+                                targetnode[0] - startnode[0])  # calculate theta_path for the given two points
+
+        if theta_path < 0:  # sanitize theta path
+            theta_path = theta_path + 2 * math.pi
+
+        xvel = V * math.cos(theta_path)  # calculate X and Y components of velocity
+        yvel = V * math.sin(theta_path)
+
+        for t in range(0, int(endtime / dt)):  # for each time step
+            if self.obsCheck(currentPos, self.obstacles):  # catch if currently in an obstacle
+                return prevPos  # return the previous valid position
+            else:
+                prevPos = currentPos  # if the current state is valid, save it as the previous valid state
+
+            if currentPos[0] == targetnode[0] and currentPos[1] == targetnode[1] and currentPos[2] == targetnode[
+                2]:  # If you're in the end state, stop
+                return currentPos
+
+            if currentPos[0] == targetnode[0] and currentPos[1] == targetnode[
+                1]:  # if you're at the correct x/y coord but have the incorrect rotation
+                if abs(currentPos[2] - targetnode[
+                    2]) < theta_dot * dt:  # if the correct position is closer than a one-timestep rotation, set the rotation to the correct position and set the
+                    currentPos[2] = targetnode[2]  # time to move to the correct time (less than one time step)
+                    if (currentPos[2] - targetnode[2]) > 0:
+                        instructionVector.append([127, -127, abs(currentPos[2] - theta_path) / theta_dot])
+                        instructionVector.append([0, 0, dt - abs(currentPos[2] - theta_path) / theta_dot])
+                    else:
+                        instructionVector.append([-127, 127, abs(currentPos[2] - theta_path) / theta_dot])
+                        instructionVector.append([0, 0, dt - abs(currentPos[2] - theta_path) / theta_dot])
+                else:  # Otherwise rotate the correct direction and add the single timestep move to the instruction vector
+                    if (currentPos[2] - targetnode[2]) > 0:
+                        instructionVector.append([127, -127, dt])
+                        currentPos[2] = currentPos[2] - theta_dot * dt
+                    else:
+                        instructionVector.append([-127, 127, dt])
+                        currentPos[2] = currentPos[2] + theta_dot * dt
+
+            elif currentPos[
+                2] == theta_path:  # if you're lined up with the target point but haven't reached it's X/Y yet
+                if self.eucldist(currentPos, targetnode) < V * dt:  # if you're closer than a single timestep move...
+                    currentPos[0] = targetnode[0]
+                    currentPos[1] = targetnode[1]
+                    instructionVector.append([127, 127, self.eucldist(currentPos, targetnode) / V])
+                    instructionVector.append([0, 0, dt - self.eucldist(currentPos, targetnode) / V])
+                else:  # otherwise move a timestep forward
+                    currentPos[0] = currentPos[0] + xvel * dt
+                    currentPos[1] = currentPos[1] + yvel * dt
+                    instructionVector.append([127, 127, dt])
+
+            else:  # If nothing else, rotate to face the correct direction
+                if abs(currentPos[2] - theta_path) < theta_dot * dt:
+                    currentPos[2] = theta_path
+                    if (currentPos[2] - theta_path) > 0:
+                        instructionVector.append([127, -127, abs(currentPos[2] - theta_path) / theta_dot])
+                        instructionVector.append([0, 0, dt - abs(currentPos[2] - theta_path) / theta_dot])
+                    else:
+                        instructionVector.append([-127, 127, abs(currentPos[2] - theta_path) / theta_dot])
+                        instructionVector.append([0, 0, dt - abs(currentPos[2] - theta_path) / theta_dot])
+
+                else:
+                    if (currentPos[2] - theta_path) > 0:
+                        instructionVector.append([127, -127, dt])
+                        currentPos[2] = currentPos[2] - theta_dot * dt
+                    else:
+                        instructionVector.append([-127, 127, dt])
+                        currentPos[2] = currentPos[2] + theta_dot * dt
+        condVector = [instructionVector[0]]
+        for vec in instructionVector:
+            if condVector[-1][0] == vec[0] and condVector[-1][1] == vec[1]:
                 condVector[-1][2] = condVector[-1][2] + vec[2]
             else:
                 condVector.append(vec)
@@ -350,7 +438,7 @@ class rrt():
 
     def getOrigin(self):
         return self.origin
-    def rrt(self,origin, verbose = False, plotting = False,):   #Main implementation of RRT
+    def rrt(self,dynamics,verbose = False, plotting = False):   #Main implementation of RRT
         xg=[]
         yg=[]
 
@@ -364,7 +452,11 @@ class rrt():
                 xrand = self.goal
             xnear = self.findclosest(self.nodesList, xrand)     #find the nearest node to the random point
             #xnear = self.findclosestOPT(self.nodesList, xrand)
-            xnew = self.takestep2(xnear, xrand, self.nodesList)  #take one step towards the random point from the nearest node and create a new node
+            if dynamics == 'HOUND':
+                xnew = self.takestepHOUND(xnear, xrand, self.nodesList)  #take one step towards the random point from the nearest node and create a new node
+            else:
+                xnew = self.takestepHIPPO(xnear, xrand,
+                                          self.nodesList)  # take one step towards the random point from the nearest node and create a new node
             #xnew = self.optimize(self.nodesList,xnew)
             [goalbool, goalpath] = self.checkgoal(self.nodesList, xnew, self.goal)  #check the new node to see if it's in the goal zone
             if (goalbool):
@@ -375,8 +467,11 @@ class rrt():
                 self.nodesList.append(xnew)
             if verbose == True: #debug info, only dump if verbose
                 print(k)
+        print('where do we go now')
         if plotting == True:# Plot if that's enabled
+
             self.drawparentlines(self.nodesList)
+
             if goalbool:
                 plt.plot(xg, yg, 'y')
             if self.live:   #If live, draw the goal to the live graph
@@ -384,9 +479,11 @@ class rrt():
                  plt.pause(0.01)
                  plt.ioff()
             plt.show()
+
             xg = (np.array(xg) / self.scale).tolist()   #scale trajectory down from increased scale
             yg = (np.array(yg) / self.scale).tolist()
             trajectory = []
             for i in range(0,len(xg)):
                 trajectory.append([xg[i],yg[i],tg[i],sg[i]])
+
         return trajectory[::-1] #return the trajectory to the goal (reverse it, its in goal -> origin order until this line

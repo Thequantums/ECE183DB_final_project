@@ -212,13 +212,13 @@ while robot.step(timestep) != -1 and killswitch != 1:
         #print("\n Recognized ",number_of_objects, " objects." );
         if number_of_objects > 0:
                 objects = camera.getRecognitionObjects()
-                
+
         for k in range(camx):
             for l in range(camy):
                 configSpace[k][l] = 0
         
-  
-        for i in objects:        
+       #using webots super camera
+        for i in objects:
             pptr = int(i.position)
             position = ctypes.c_double * 3
             position = position.from_address(pptr)
@@ -241,26 +241,85 @@ while robot.step(timestep) != -1 and killswitch != 1:
             centy = position_on_image[1]
             xdist = math.ceil(size_on_image[0]/2)
             ydist = math.ceil(size_on_image[1]/2)
-           
-
-
-
-            
-            for cdx in range(centx-xdist,centx+xdist):
-                for cdy in range(centy-ydist,centy+ydist):
-                    if(cdx>=0 and cdx<camx and cdy>=0 and cdy<camy):
-                        configSpace[cdx][cdy] = 1;
+            print(i.get_colors())
+            if(i.get_colors() == [1,1,1]):
+                houndstart = [centx,camy - centy]
+            if (i.get_colors() == [0, 0, 0]):
+                hippostart = [centx,camy - centy]
+            if(i.get_colors() == [1,0,0]):
+                #getting configspace for obstacles
+                for cdx in range(centx-xdist,centx+xdist):
+                    for cdy in range(centy-ydist,centy+ydist):
+                        if(cdx>=0 and cdx<camx and cdy>=0 and cdy<camy):
+                            configSpace[cdx][cdy] = 1;
                         
         data = np.array(configSpace)
         data = np.transpose(data)
-        lab3.runRRT( 'exxample' ,1,data,[0,0],[camx-1,camy-1])
-        
-        request = 0
-        done = True
-        x_good = False
-        z_good = False
-        target_x = rende[0]
-        target_z = rende[1]
+        #calling to map the RRT
+        path = lab3.runRRT( 'exxample' ,1, data,houndstart,[400,400])
+        path = lab3.runRRT('exxample', 1, data, hippostart, [400,400])
+        print(path)
+        if False:
+            # COLLISION AVOIDANCE CODE
+            # Trajectories for Hound
+            # Each node has the form of (x,y,delta,parent)
+            hound_path = lab3.runRRT('hound', 1, data, [0, 0], [camx - 1, camy - 1])
+            # Trajectories for Hippo
+            hippo_path = lab3.runRRT('hippo', 1, data, [0, 0], [camx - 1, camy - 1])
+
+            # Translating from pixels to real worls unit
+
+            # Translating to worlds coordinates
+
+            # x,y,delta,parent,Fifth field is a list containing potential crush [x,y],6th field is a list containing static collision between hippo and hound when they stay at their nodes
+            # 7th field is to store the potential nodes of colliding while driving
+            for i in range(len(hound_path)):
+                potential_crushing_nodes = []
+                hound_path[i].append(potential_crushing_nodes)
+                colliding_nodes = []
+                hound_path[i].append(colliding_nodes)
+                hound_path[i].append(colliding_nodes)
+
+            for i in range(len(hippo_path)):
+                potential_crushing_nodes = []
+                hippo_path[i].append(potential_crushing_nodes)
+                colliding_nodes = []
+                hippo_path[i].append(colliding_nodes)
+                hippo_path[i].append(colliding_nodes)
+
+            # Four cases to check for
+            # checking for intersecting paths between the two trajectories and mark the path.
+            for i in range(len(hound_path) - 1):
+                for j in range(len(hippo_path) - 1):
+                    # this function takes in 8 arguments, x intial and y intial from hound, x final and y final from hound; x intial and y intial from hippo, x final and y final from hippo
+                    init_hound = Point(hound_path[i][0], hound_path[i][1])
+                    final_hound = Point(hound_path[i + 1][0], hound_path[i + 1][1])
+                    init_hippo = Point(hippo_path[j][0], hippo_path[j][1])
+                    final_hippo = Point(hippo_path[j + 1][0], hippo_path[j + 1][1])
+                    if doIntersect(init_hound, final_hound, init_hippo, final_hippo):
+                        # append the potential crushing node of hippo, there could be more than one potential crushing node
+                        hound_path[i][4].append([init_hippo.x, init_hippo.y])
+                        # append the potential crushing node of hound
+                        hippo_path[j][4].append([init_hound.x, init_hound.y])
+                    if check_two_circles_intersect(init_hound, init_hippo):
+                        # two circles intersect for that state, share each other information, to check for during execution
+                        hound_path[i][5].append([init_hippo.x, init_hippo.y])
+                        hippo_path[j][5].append([init_hound.x, init_hound.y])
+                    if check_robot_is_moving(init_hound, final_hound, hound_radius, init_hippo, hippo_radius):
+                        # hound is moving from inital node to final node, check if hippo in j node can cause collision
+                        hound_path[i][6].append([init_hippo.x, init_hippo.y])
+                    if check_robot_is_moving(init_hippo, final_hippo, hippo_radius, init_hound, hound_radius):
+                        # hippo is moving from inital node to final node, check if hound in i node can cause collision
+                        hippo_path[j][6].append([init_hound.x, init_hound.y])
+
+            # send the hound and hippo path to hound and hippo.
+
+            request = 0
+            done = True
+            x_good = False
+            z_good = False
+            target_x = rende[0]
+            target_z = rende[1]
         
     if done and x_good and z_good:
         target_altitude = 1
