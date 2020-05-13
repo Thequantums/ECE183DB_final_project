@@ -6,6 +6,7 @@ import numpy as np
 import cv2
 import matplotlib.pyplot as plt
 import math
+from PIL import Image as im
 
 class imgToObs():
 
@@ -79,4 +80,60 @@ class imgToObs():
         print("ARRAY PROCESSING DONE")
         return [array,obarray]
 
+    def padToMatch(self, input, toMatch):
+        [xmatch, ymatch] = np.shape(toMatch)
+        [xin, yin] = np.shape(input)
+        output = np.pad(input, ((0, xmatch - xin), (0, ymatch - yin)), 'edge')
+        return output
 
+    def obsSpaceGen(self,robotShape,obsSpace):
+        #Get x/y shape of robot (assuming rectangular)
+        [x,y] = robotShape
+        xcent = math.ceil(x/2)
+        ycent = math.ceil(y/2)
+        dist = max(xcent,ycent)
+        #pad obsspace to prevent rollover
+        print(np.shape(obsSpace))
+        obs = np.pad(obsSpace,((dist,dist),(dist,dist)),'constant',constant_values=0)
+        print(np.shape(obs))
+        #pad robot shape with zeros, to fix rotation
+        robot = np.ones((y, x))
+        space = np.zeros((y, x))
+        newspace = np.concatenate((space, robot, space), 0)
+        empty = np.concatenate((space, space, space))
+        robotSpace = np.hstack((empty, newspace, empty))
+        RS = im.fromarray(robotSpace)
+        robotAngles = []
+        # Create array of robot angle shifts
+        for i in range(0, 180):
+            robotAngles.append(self.padToMatch(np.array(RS.rotate(i)), obs))
+
+        print(obs)
+        plt.imshow(obs,interpolation='nearest')
+        plt.show()
+        #check all angles for robotAngles
+        newobs = []
+        for x in range(0, round(np.shape(obsSpace)[0]/50)):
+            newobsy = []
+            for y in range(0,round(np.shape(obsSpace)[1]/50)):
+                newobst = []
+                for i in range(0, 180,45):
+                    newobst.append(np.any(np.logical_and(obs, robotAngles[i])))
+                obs = np.roll(obs,50,axis = 0)
+                newobsy.append(newobst)
+                print('Y:',y)
+            obs = np.roll(obs, 50, axis = 1)
+            newobs.append(newobsy)
+            print("X:",x)
+        print("done")
+        print(np.shape(np.array(newobs)))
+        [d1,d2,d3] = np.shape(newobs.T)
+        print(np.any(newobs))
+        deobs = np.dsplit(np.array(newobs).T,d3)
+        print(deobs)
+        print(np.shape(np.squeeze(deobs[0])))
+        plt.imshow(np.squeeze(deobs[0]),interpolation='nearest')
+        plt.show()
+        plt.imshow(np.squeeze(deobs[2]), interpolation='nearest')
+        plt.show()
+        print(newobs)

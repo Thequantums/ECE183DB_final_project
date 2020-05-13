@@ -8,7 +8,7 @@ class rrt():
 
 
     def __init__(self, origin = [250, 0, 0, 0,'',0], maxcoords = [500,500], stepsize = 5, N = 10000, obstacles = [[0, 0, 100, 500], [400, 0, 500, 500], [200, 300, 400, 325],
-                     [100, 350, 250, 375]], goal = [140, 400, 150, 410], obstacletype = 'vertex', live = False, divis = 1,scale = 10,arb = False):
+                     [100, 350, 250, 375]], goal = [140, 400, 150, 410], obstacletype = 'vertex', live = False, divis = 1,scale = 10):
         self.origin = origin  # Origin point, in form x,y,parent
         self.maxcoords = maxcoords  # Max values of field. x,y form. Assumes bottom left is 0,0
         self.N = N  # Iterations to run
@@ -16,21 +16,20 @@ class rrt():
         # scaled up by the scale variable, in order to make the system sufficiently continuous. Rectangles only, in form xmin, ymin, xmax, ymax
         self.goal = goal  # goal. Rectangles only, in form xmin, ymin, xmax, ymax
         self.nodesList = [origin]  # list of all nodes
-        self.robotRadius = 20*scale    #Radius of the circular robot estimate
+        self.robotRadius = 5*scale    #Radius of the circular robot estimate
         self.obstacletype = obstacletype    #Whether we're using the vertex obstacle type (manual entry) or the array type (import from obstacleFinder)
         self.live = live    #Whether we're using the "live" plotter or the end-time plotter
         self.divis = divis #draw every divis changes
         self.scale = scale  #scale-up constant for graph
-        self.sweetener = 50 #determines how often to push the tree towards the goal state. EG a value of 100 means it sets the random point to the goal
+        self.sweetener = 100 #determines how often to push the tree towards the goal state. EG a value of 100 means it sets the random point to the goal
         #every 100 iterations
-        self.isArbitrary = arb    #picks a random start and end point
         if self.live:   #Turns on interactive plotting if in live mode
             plt.ion()
+
 
     def eucldist(self,node1, node2):  # returns the euclidian distance between two nodes
         dist = math.sqrt(pow(node1[0] - node2[0], 2) + pow(node1[1] - node2[1], 2))
         return dist
-
 
     def finddist(self,node1, node2):  # returns the euclidian distance between two nodes
         Vmax = 126.6 #Max distance for one second movement
@@ -49,16 +48,6 @@ class rrt():
             theta_diff_2 = abs(theta_diff_2 - 2 * math.pi)
 
         return (self.eucldist(node1, node2) / Vmax) + (theta_diff_1/delta_max + theta_diff_2/delta_max)
-
-        # vect1 = [math.acos(node1[0]), math.asin(node1[1])]  # getting units vector for xnear
-        # vect2 = [node2[0] - node1[0], node2[1] - node1[1]]  # getting vector for path from xnear to  newnode
-        # unit_vect1 = vect1 / np.linalg.norm(vect1)  # make it a unit vector, already a unit vector
-        # unit_vect2 = vect2 / np.linalg.norm(vect2)  # make it a unit vector
-        # delta_direction_angle = np.arccos(np.dot(unit_vect1, unit_vect2))  # getting angles
-        # vect3 = [math.acos(node2[0]), math.asin(node2[1])]  # unit vector for the xnew
-        # delta_after_reached = np.acrcos(np.dot(unit_vect2, vect3))
-        # dist = (self.eucldist(node1, node2) / Vmax) + (abs(delta_direction_angle) / delta_max + (abs(delta_after_reached) / delta_max))
-        # return dist
 
 
     def randomPoint(self):  # generates a random point. Uses a larger space than the actual Configuration space in order to increase steps towards the outside of the space
@@ -90,12 +79,6 @@ class rrt():
         return False
 
 
-    def createArb(self):
-        self.origin = self.randomPoint()
-        while (self.obsCheck(self.origin, self.obstacles)):
-            self.origin = self.randomPoint()
-        self.nodesList = [self.origin]
-
 
     def pathClear(self, startnode, endnode, obs):   #determines if a path is clear using obsCheck. Does this by canvassing a rectangle with the two input points in opposite corners.
         deadzone = 1    #deadzone because axis perpindicular paths break everything for some reason
@@ -126,132 +109,177 @@ class rrt():
         if stepy == 0:
             return True
 
-        for x in range(round(startnode[0]), round((startnode[0] + diffx+(self.robotRadius*stepx))), stepx):          #check every node in a rectangle with startnode and endnode as opposite corners to verify path
-            for y in range(round(startnode[1]), round((startnode[1] + diffy+(self.robotRadius*stepy) )), stepy):
+        for x in range(round(startnode[0]), round((startnode[0] + diffx)), stepx):          #check every node in a rectangle with startnode and endnode as opposite corners to verify path
+            for y in range(round(startnode[1]), round((startnode[1] + diffy )), stepy):
                 if self.obsCheck([x,y],obs):
                     return True
         return False
 
+    def takestep2(self,startnode, targetnode, nodes):  # finds a point one unit step from startnode, in the direction of targetnode. Takes "node" in order to set new node's parent node in node[2]
+        dt = 0.01       #Timestep in seconds
+        endtime = 1     #endtime in seconds
+        instructionVector = []  #vector for instructions
+        # Full spin and Full velocity
+        theta_dot = 2.979/4
+        V = 126.6
+        currentPos = [startnode[0],startnode[1],startnode[2],self.nodesList.index(startnode),'',0]  #initialize currentPosition to startPosition
+        prevPos = currentPos    #initialize prevPos to currentPos
+        theta_path = math.atan2(targetnode[1] - startnode[1], targetnode[0] - startnode[0]) #calculate theta_path for the given two points
 
-    def takestep(self, startnode, targetnode, nodes,dynamics):  # finds a point one unit step from startnode, in the direction of targetnode. Takes "node" in order to set new node's parent node in node[2]
-        if dynamics == 'hippo':
-            print('hippo dynamics')
-            if self.pathClear(startnode, targetnode, self.obstacles):
-                return self.origin
+        if theta_path < 0:                      #sanitize theta path
+            theta_path = theta_path + 2*math.pi
+
+        xvel = V*math.cos(theta_path)   #calculate X and Y components of velocity
+        yvel = V*math.sin(theta_path)
+
+        for t in range(0,int(endtime/dt)):  #for each time step
+            if self.obsCheck(currentPos, self.obstacles):   #catch if currently in an obstacle
+                return prevPos      #return the previous valid position
             else:
-                #hippo has infinite time to move
-                #hippo can go from every x',y',delta' to x, y, delta  if there is no obstacle along the path.
-                #but we can restrict how far the target node can be from this start node. This is so we can get many nodes along the path which helps improve dynamic obtacle avoidance
-                v = 126.6 # fake value
-                time_to_move = 1 #in simulation it will take more than 1 sec because of angle rotation. will have to change that.
-                euclid = self.eucldist(startnode,targetnode)
+                prevPos = currentPos    #if the current state is valid, save it as the previous valid state
 
-                # limit move time to only 1 second
-                time_to_move = euclid/V
-                if time_to_move > time_left:
-                    time_to_move = time_left
+            if currentPos[0]==targetnode[0] and currentPos[1]==targetnode[1] and currentPos[2]==targetnode[2]: #If you're in the end state, stop
+                return currentPos
 
-                # Get angle from start node to end node
-                theta_path = math.atan2(targetnode[1] - startnode[1], targetnode[0] - startnode[0])
-                if startnode[1] == targetnode[1] and startnode[0] == targetnode[0]:
-                    theta_path = targetnode[2]
+            if currentPos[0]==targetnode[0] and currentPos[1]==targetnode[1]:   #if you're at the correct x/y coord but have the incorrect rotation
+                if abs(currentPos[2]-targetnode[2]) < theta_dot*dt:   #if the correct position is closer than a one-timestep rotation, set the rotation to the correct position and set the
+                    currentPos[2] = targetnode[2]                     #time to move to the correct time (less than one time step)
+                    if (currentPos[2] - targetnode[2]) > 0:
+                        instructionVector.append([127, -127, abs(currentPos[2] - theta_path) / theta_dot])
+                        instructionVector.append([0, 0, dt - abs(currentPos[2] - theta_path) / theta_dot])
+                    else:
+                        instructionVector.append([-127, 127, abs(currentPos[2] - theta_path) / theta_dot])
+                        instructionVector.append([0, 0, dt - abs(currentPos[2] - theta_path) / theta_dot])
+                else:                                               #Otherwise rotate the correct direction and add the single timestep move to the instruction vector
+                    if (currentPos[2]-targetnode[2]) > 0:
+                        instructionVector.append([127, -127, dt])
+                        currentPos[2] = currentPos[2]-theta_dot*dt
+                    else:
+                        instructionVector.append([-127, 127, dt])
+                        currentPos[2] = currentPos[2]+theta_dot*dt
 
-                if theta_path < 0:
-                    theta_path = theta_path + 2*math.pi
+            elif currentPos[2] == theta_path:                   #if you're lined up with the target point but haven't reached it's X/Y yet
+                if self.eucldist(currentPos,targetnode) < V*dt: #if you're closer than a single timestep move...
+                    currentPos[0] = targetnode[0]
+                    currentPos[1] = targetnode[1]
+                    instructionVector.append([127, 127, self.eucldist(currentPos,targetnode) / V])
+                    instructionVector.append([0, 0, dt - self.eucldist(currentPos,targetnode) / V])
+                else:                                           #otherwise move a timestep forward
+                    currentPos[0] = currentPos[0] + xvel * dt
+                    currentPos[1] = currentPos[1] + yvel * dt
+                    instructionVector.append([127, 127, dt])
 
-                newx = startnode[0] + V*math.cos(theta_path)*time_to_move
-                newy = startnode[1] + V*math.sin(theta_path)*time_to_move
+            else:                                               #If nothing else, rotate to face the correct direction
+                if abs(currentPos[2] - theta_path) < theta_dot * dt:
+                    currentPos[2] = theta_path
+                    if (currentPos[2] - theta_path) > 0:
+                        instructionVector.append([127, -127, abs(currentPos[2] - theta_path)/theta_dot ])
+                        instructionVector.append([0,0,dt-abs(currentPos[2] - theta_path)/theta_dot])
+                    else:
+                        instructionVector.append([-127, 127, abs(currentPos[2] - theta_path) / theta_dot])
+                        instructionVector.append([0, 0, dt - abs(currentPos[2] - theta_path) / theta_dot])
 
-                newnode = [newx, newy, targetnode[2], nodes.index(startnode), "the drive function will handle", startnode[5] + self.finddist(startnode, newnode)]
-                return newnode
-        else:
-            print('hippo dynamics')
-            #put dynamics here
-            #print('FAILSAFE')
-             
-            # You get one second to move
-            time_left = 1
+                else:
+                    if (currentPos[2] - theta_path) > 0:
+                        instructionVector.append([127, -127, dt])
+                        currentPos[2] = currentPos[2] - theta_dot * dt
+                    else:
+                        instructionVector.append([-127, 127, dt])
+                        currentPos[2] = currentPos[2] + theta_dot * dt
+        condVector = [instructionVector[0]]
+        for vec in instructionVector:
+            if condVector[-1][0]==vec[0] and condVector[-1][1]==vec[1]:
+                condVector[-1][2] = condVector[-1][2] + vec[2]
+            else:
+                condVector.append(vec)
 
-            # Full spin and Full velocity
-            theta_dot = 2.979
-            V = 126.6
+        currentPos[4] = condVector
+        return currentPos
 
-            # Get angle from start node to end node
-            theta_path = math.atan2(targetnode[1] - startnode[1], targetnode[0] - startnode[0])
-            if startnode[1] == targetnode[1] and startnode[0] == targetnode[0]:
-                theta_path = targetnode[2]
-                #print(startnode[2],targetnode[2])
+    def takestep(self, startnode, targetnode, nodes):  # finds a point one unit step from startnode, in the direction of targetnode. Takes "node" in order to set new node's parent node in node[2]
+        # You get one second to move
+        time_left = 1
 
-            if theta_path < 0:
-                theta_path = theta_path + 2*math.pi
+        # Full spin and Full velocity
+        theta_dot = 2.979/8
+        V = 126.6/2
 
-            # Difference between start angle and path angle
-            theta_diff_1 = abs(theta_path-startnode[2])
-            if theta_diff_1 > math.pi:
-                theta_diff_1 = abs(theta_diff_1-2*math.pi)
-            if (startnode[2] - theta_diff_1) % (2*math.pi) == theta_path:
-                theta_diff_1 = 0 - theta_diff_1
-            time_turn_1 = abs(theta_diff_1)/theta_dot
+        # Get angle from start node to end node
+        theta_path = math.atan2(targetnode[1] - startnode[1], targetnode[0] - startnode[0])
+        if startnode[1] == targetnode[1] and startnode[0] == targetnode[0]:
+            theta_path = targetnode[2]
+            print(startnode[2],targetnode[2])
+
+        if theta_path < 0:
+            theta_path = theta_path + 2*math.pi
+
+        # Difference between start angle and path angle
+        theta_diff_1 = abs(theta_path-startnode[2])
+        if theta_diff_1 > math.pi:
+            theta_diff_1 = abs(theta_diff_1-2*math.pi)
+        if (startnode[2] - theta_diff_1) % (2*math.pi) == theta_path:
+            theta_diff_1 = 0 - theta_diff_1
+        time_turn_1 = abs(theta_diff_1)/theta_dot
 
         # Use up time to turn that way
-            if time_turn_1 > time_left:
-                time_turn_1 = time_left
-            time_left = time_left - time_turn_1
+        if time_turn_1 > time_left:
+            time_turn_1 = time_left
+        time_left = time_left - time_turn_1
 
         # Euclidian distance of path from start to target
-            euclid = self.eucldist(startnode,targetnode)
+        euclid = self.eucldist(startnode,targetnode)
 
         # Use up time to move along path
-            time_to_move = euclid/V
-            if time_to_move > time_left:
-                time_to_move = time_left
-            time_left = time_left - time_to_move
+        time_to_move = euclid/V
+        if time_to_move > time_left:
+            time_to_move = time_left
+        time_left = time_left - time_to_move
 
         # Difference bewteen path angle and ending angle
-            theta_diff_2 = abs(theta_path-targetnode[2])
-            if theta_diff_2 > math.pi:
-                theta_diff_2 = abs(theta_diff_2-2*math.pi)
-            if (theta_path - theta_diff_2) % (2*math.pi) == targetnode[2]:
-                theta_diff_2 = 0 - theta_diff_2
+        theta_diff_2 = abs(theta_path-targetnode[2])
+        if theta_diff_2 > math.pi:
+            theta_diff_2 = abs(theta_diff_2-2*math.pi)
+        if (theta_path - theta_diff_2) % (2*math.pi) == targetnode[2]:
+            theta_diff_2 = 0 - theta_diff_2
 
         # Use up time to turn to ending angle
-            time_turn_2 = abs(theta_diff_2)/theta_dot
-            if time_turn_2 > time_left:
-                time_turn_2 = time_left
-            time_left = time_left - time_turn_2
+        time_turn_2 = abs(theta_diff_2)/theta_dot
+        if time_turn_2 > time_left:
+            time_turn_2 = time_left
+        time_left = time_left - time_turn_2
 
         # Decide whether your turning right or left and adjust angle at max speed
-            if theta_diff_1 < 0:
-                new_theta = startnode[2] - theta_dot*time_turn_1
-            else:
-                new_theta = startnode[2] + theta_dot*time_turn_1
+        if theta_diff_1 < 0:
+            new_theta = startnode[2] - theta_dot*time_turn_1
+        else:
+            new_theta = startnode[2] + theta_dot*time_turn_1
 
         # Move along path at max speed
-            newx = startnode[0] + V*math.cos(theta_path)*time_to_move
-            newy = startnode[1] + V*math.sin(theta_path)*time_to_move
+        newx = startnode[0] + V*math.cos(theta_path)*time_to_move
+        newy = startnode[1] + V*math.sin(theta_path)*time_to_move
 
         # Decide whether your turning right or left and adjust angle at max speed
+        if theta_diff_2 < 0:
+            new_theta = new_theta - theta_dot * time_turn_2
+        else:
+            new_theta = new_theta + theta_dot * time_turn_2
+
+        new_theta = new_theta % (2*math.pi)
+
+
+        string_in = ''
+        if time_turn_1 >= .01:
+            if theta_diff_1 < 0:
+                string_in = string_in + 'PWML=149, PWMR=50, t=' + str(time_turn_1) + '\n'
+            if theta_diff_1 > 0:
+                string_in = string_in + 'PWML=40, PWMR=149, t=' + str(time_turn_1) + '\n'
+        if time_to_move >= .01:
+            string_in = string_in + 'PWML=149, PWMR=149, t=' + str(time_to_move) + '\n'
+        if time_turn_2 >= .01:
             if theta_diff_2 < 0:
-                new_theta = new_theta - theta_dot * time_turn_2
-            else:
-                new_theta = new_theta + theta_dot * time_turn_2
-
-            new_theta = new_theta % (2*math.pi)
-
-
-            string_in = ''
-            if time_turn_1 >= .01:
-                if theta_diff_1 < 0:
-                    string_in = string_in + 'PWML=149, PWMR=50, t=' + str(time_turn_1) + '\n'
-                if theta_diff_1 > 0:
-                    string_in = string_in + 'PWML=40, PWMR=149, t=' + str(time_turn_1) + '\n'
-            if time_to_move >= .01:
-                string_in = string_in + 'PWML=149, PWMR=149, t=' + str(time_to_move) + '\n'
-            if time_turn_2 >= .01:
-                if theta_diff_2 < 0:
-                    string_in = string_in + 'PWML=149, PWMR=50, t=' + str(time_turn_2) + '\n'
-                if theta_diff_2 > 0:
-                    string_in = string_in + 'PWML=40, PWMR=149, t=' + str(time_turn_2) + '\n'
+                string_in = string_in + 'PWML=149, PWMR=50, t=' + str(time_turn_2) + '\n'
+            if theta_diff_2 > 0:
+                string_in = string_in + 'PWML=40, PWMR=149, t=' + str(time_turn_2) + '\n'
 
         # Set up new node
         newnode = [newx, newy, new_theta, nodes.index(startnode), string_in,0]
@@ -264,23 +292,6 @@ class rrt():
             checkednode = newnode
         return checkednode
 
-        #dist = self.finddist(startnode, targetnode) #make sure startnode and targetnode are actually different
-        #if dist != 0:
-        #    newx = ((targetnode[0] - startnode[0]) / dist) * self.stepsize #set new x and y to one unit step, multiplied bu stepsize to expand the step if desired
-        #    newy = ((targetnode[1] - startnode[1]) / dist) * self.stepsize
-        #    theta = 0## DUMB CODE FIX LATER
-        #    newnode = [newx + startnode[0], newy + startnode[1],theta , nodes.index(startnode)]    #sets x and y, as well as storing the parent node
-        #    if self.pathClear(startnode, newnode, self.obstacles):  #Check for obstacles in the path, returns the origin as a dummy node if the point is invalid
-        #        checkednode = self.origin
-        #    else:
-        #        checkednode = newnode
-        #else:
-        #    checkednode = self.origin
-        #return checkednode
-            
-        
-       
-
 
     def findclosest(self,nodes, newnode):  # finds the closest node to newnode in nodelist nodes
         distances = []
@@ -288,20 +299,6 @@ class rrt():
             distances.append(self.finddist(i,newnode))
 
         return nodes[distances.index(min(distances))]
-
-
-    def findclosestOPT(self,nodes, newnode):  # finds the closest node to newnode in nodelist nodes
-        radius = 2
-        distances = []
-        for i in nodes:
-            distances.append(self.finddist(i,newnode))
-        closest = nodes[distances.index(min(distances))]
-        cheapest = closest
-        for i in nodes:
-            if self.finddist(closest, i) < radius:
-                if i[5] < cheapest[5]:
-                    cheapest = i
-        return cheapest
 
 
     def checkgoal(self,nodelist, node, goal):  # checks if the point is within the goal. if not, it sets goalfound to false. if it is, it returns the node path it took and sets goalfound to false
@@ -335,13 +332,13 @@ class rrt():
 
     def drawparentlines(self, nodelist):    #draws connecting lines between parent and child nodes
         filterlist = [self.origin]
-        for n in nodelist:  #Filters out repeated points for speed of drawing
-            if n[3] == 0:
+        print(self.origin)
+        for n in nodelist:
+            if n[3]==-1:
                 pass
             else:
                 filterlist.append(n)
-
-        for node in nodelist:             #plot each "jump" from child node to parent node
+        for node in filterlist:             #plot each "jump" from child node to parent node
             if(node == nodelist[node[3]]):
                 pass
             else:
@@ -351,21 +348,12 @@ class rrt():
                     plt.draw()
                     plt.pause(0.0001)
 
-
-    def optimize(self,nodes,newnode): #method reserved if we can get RRT* to function
-        radius = 2
-        for i in nodes:
-            if self.finddist(newnode, i) < radius:
-                if i[5]+self.finddist(i,newnode) < newnode[5]:
-                    newnode[5] = i[5]+self.finddist(i,newnode)
-                    newnode[3] = nodes.index(i)
-        return newnode
-
-    def rrt(self, verbose = False, plotting = False, dynamics = 'hound'):   #Main implementation of RRT
+    def getOrigin(self):
+        return self.origin
+    def rrt(self,origin, verbose = False, plotting = False,):   #Main implementation of RRT
         xg=[]
         yg=[]
-        if (self.isArbitrary):
-            self.createArb()
+
         self.initplot(self.goal, self.obstacles)    #initialize plot
 
 
@@ -374,10 +362,9 @@ class rrt():
                 xrand = self.randomPoint()  #choose a random point
             else:
                 xrand = self.goal
-
             xnear = self.findclosest(self.nodesList, xrand)     #find the nearest node to the random point
             #xnear = self.findclosestOPT(self.nodesList, xrand)
-            xnew = self.takestep(xnear, xrand, self.nodesList,dynamics)  #take one step towards the random point from the nearest node and create a new node
+            xnew = self.takestep2(xnear, xrand, self.nodesList)  #take one step towards the random point from the nearest node and create a new node
             #xnew = self.optimize(self.nodesList,xnew)
             [goalbool, goalpath] = self.checkgoal(self.nodesList, xnew, self.goal)  #check the new node to see if it's in the goal zone
             if (goalbool):
@@ -386,21 +373,20 @@ class rrt():
                 break
             else:   #otherwise, just add it to the list and continue
                 self.nodesList.append(xnew)
-            #if verbose == True: #debug info, only dump if verbose
-                #print(k)
+            if verbose == True: #debug info, only dump if verbose
+                print(k)
         if plotting == True:# Plot if that's enabled
             self.drawparentlines(self.nodesList)
             if goalbool:
                 plt.plot(xg, yg, 'y')
             if self.live:   #If live, draw the goal to the live graph
-                plt.draw()
-                plt.pause(0.01)
-                plt.ioff()
+                 plt.draw()
+                 plt.pause(0.01)
+                 plt.ioff()
             plt.show()
             xg = (np.array(xg) / self.scale).tolist()   #scale trajectory down from increased scale
             yg = (np.array(yg) / self.scale).tolist()
             trajectory = []
             for i in range(0,len(xg)):
                 trajectory.append([xg[i],yg[i],tg[i],sg[i]])
-        #each node in the form of (x,y,delta,parent)
         return trajectory[::-1] #return the trajectory to the goal (reverse it, its in goal -> origin order until this line
