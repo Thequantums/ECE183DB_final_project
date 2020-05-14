@@ -407,9 +407,15 @@ hawk {
 }
 hippo {
   translation -0.95 0.120004 2.68
+  RecognitionColors [
+    0 0 0
+  ]
 }
 hound {
   translation -0.931641 0.03 0.033101
   rotation 0 -1 0 -1.5708053071795867
   name "Hound(1)"
+  RecognitionColors [
+    1 1 1
+  ]
 }
