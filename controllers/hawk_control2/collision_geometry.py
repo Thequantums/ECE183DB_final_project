@@ -103,48 +103,6 @@ def check_line_intersect_circle(p1,p2,center,radius):
     return False
 
 
-
-
-# Returns true if the point p lies inside the polygon[] with n vertices
-def isInsideRectanlge(polygon, p):
-    # Create a point for line segment from p to infinite
-    extreme = Point(math.inf, p.y)
-
-    # Count intersections of the above line with sides of polygon
-    count, i = 0, 0
-    while(True):
-        next = (i+1)%4
-        # Check if the line segment from 'p' to 'extreme' intersects
-        # with the line segment from 'polygon[i]' to 'polygon[next]'
-        if doIntersect(polygon[i], polygon[next], p, extreme):
-            # If the point 'p' is colinear with line segment 'i-next',
-            # then check if it lies on segment. If it lies, return true,
-            # otherwise false
-            if orientation(polygon[i], p, polygon[next]) == 0:
-                return onSegment(polygon[i], p, polygon[next])
-            count = count + 1
-        i = next
-        if i == 0:
-            break
-    # Return true if count is odd, false otherwise
-    return count%2 == 1
-
-def isInsidePrlgm(p,poly):
-    inside = False
-    xb = poly[0].x - poly[1].x
-    yb = poly[0].y - poly[1].y
-    xc = poly[2].x - poly[2].x
-    yc = poly[2].y - poly[2].y
-    xp = p.x - poly[1].x
-    yp = p.y - poly[1].y
-    d = xb * yc - yb * xc
-    if d != 0:
-        oned = 1.0 /d
-        bb = (xp * yc - xc * yp) * oned
-        cc = (xb * yp - xp * yb) * oned
-        inside = (bb >= 0) and (cc >= 0) and (bb <= 1) and (cc <= 1)
-    return inside
-
 def point_line_intersect_circles(m,d,center,r):
     a,b = center.x, center.y
     alpha = pow(r,2)*(1+pow(m,2)) - pow(b-m*a-d,2)
@@ -162,6 +120,53 @@ def sgn(x):
 
 def between_value(a,b,c):
     return a <= b <= c
+
+def point_lines_intersect(m1,b1,m2,b2):
+    x = (b2-b1)/(m1-m2)
+    y = m1 * x + b1
+    return x,y
+
+def isinsiderect(p1,p2,A,B,C,D,center):
+    cx, cy = center.x, center.y
+    if (A.y - B.y) == 0 or (C.y - D.y) == 0:
+        #vertical rectangle
+        if (between_value(A.x,cx,B.x) or between_value(B.x,cx,A.x)) and (between_value(A.y,cy,C.y) or between_value(C.y,cy,A.y)) :
+            return True
+        else:
+            return False
+    if (A.x - B.x == 0) or (C.x - D.x == 0):
+        #horizontal rectangle
+        if (between_value(A.x,cx,C.x) or between_value(C.x,cx,A.x)) and (between_value(A.y,cy,B.y) or between_value(B.y,cy,A.y)) :
+            return True
+        else:
+            return False
+    my_m = (p2.y-p1.y)/(p2.x-p1.x)
+    my_b = cy - my_m*cx
+    sectAB_m = -1/my_m
+    sectAB_b = p1.y - sectAB_m*p1.x
+    sectCD_m = -1/my_m
+    sectCD_b = p2.y - sectCD_m*p2.x
+    if sectAB_m - my_m == 0 or sectCD_m - my_m == 0:
+        #parallel, not intersect
+        return False
+    x1,y1 = point_lines_intersect(my_m,my_b,sectAB_m,sectAB_b)
+    x2,y2 = point_lines_intersect(my_m,my_b,sectCD_m,sectCD_b)
+    if between_value(A.x,x1,B.x) or between_value(B.x,x1,A.x) or between_value(C.x,x2,D.x) or between_value(D.x,x2,C.x):
+        sectBC_m = (C.y-B.y)/(C.x-B.x)
+        if sectBC_m == my_m:
+            sectBC_b = B.y - sectBC_m * B.x
+            x3,y3 = point_lines_intersect(sectBC_m,sectBC_b,-1/my_m, (cy - (-1/my_m)*cx))
+            if between_value(B.x,x3,C.x) or between_value(C.x,x3,B.x):
+                return True
+        else:
+            sectBD_m = my_m
+            sectBD_b = B.y - sectBD_m * B.x
+            x3, y3 = point_lines_intersect(sectBD_m,sectBD_b,-1/my_m, (cy - (-1/my_m)*cx))
+            if between_value(B.x,x3,D.x) or between_value(D.x,x3,B.x):
+                return True
+    return False
+
+
 
 def clic(p1,p2,center,r):
     #print("original : ",p1.x, " ", p1.y, " ", p2.x, " ", p2.y," ")
@@ -201,8 +206,8 @@ def clic(p1,p2,center,r):
     return False
 
 #check if a rectangle intersect with a stationed circle
-def intersect(P,R,A,B,C,D):
-    if clic(A,B,P,R) or clic(B,C,P,R) or clic(C,D,P,R) or clic(B,D,P,R) or clic(A,C,P,R) or clic(A,D,P,R):
+def intersect(P,R,A,B,C,D,p1,p2):
+    if isinsiderect(p1,p2,A,B,C,D,P) or clic(A,B,P,R) or clic(B,C,P,R) or clic(C,D,P,R) or clic(B,D,P,R) or clic(A,C,P,R) or clic(A,D,P,R):
        return True
     return False
 
@@ -240,30 +245,9 @@ def check_robot_is_moving(p1,p2,radius1,center,radius2):
     A,B,C,D = get_rectangle_points(p1,p2,radius1)
     #print("my A, B, C, D: ", A.x," ",A.y, " ", B.x, " ", B.y, " ", C.x, ' ', C.y, ' ', D.x, ' ', D.y)
     #clic(B,C,center,radius2)
-    return intersect(center,radius2, A,B,C,D)
+    return intersect(center,radius2, A,B,C,D,p1,p2)
 
 #if __name__ == '__main__':
-    #p1 = Point(-1,-1)
-    #p2 = Point(-2,2)
-    #p3 = Point(-1.5,-1)
-    #p4 = Point(-1,2)
-    #if doIntersect(p1,p2,p3,p4):
-    #    print('yes')
-    #r1 = Point(1,1)
-    #r2 = Point(2,1)
-    #if check_two_circles_intersect(r1,0.5,r2,0.5):
-    #    print('yes')
-    #ph1 = Point(1,2)
-    #ph2 = Point(5,2)
-    #center = Point(3,0)
-    #if check_robot_is_moving(ph1,ph2,2,center,1):
-    #    print('moving Yes')
-    #if isInsideRectanlge([Point(1,1),Point(1,2),Point(3,1),Point(3,2)],Point(2,1.2)):
-        #print('Yes')
-    #polygon = Polygon([(1,1),(1,2),(3,1),(3,2)])
-    #print(polygon.contains(point(2,1.2)))
-    #A,B,C,D = get_rectangle_points(Point(1,1),Point(3,3),1)
-    #if check_robot_is_moving(Point(1,0),Point(2,4),1,Point(3,2),0.2):
-    #    print('yes')
-    #if clic(Point(-2,-2),Point(2,2),Point(2,7),2):
-    #   print('YES')
+#    A,B,C,D = get_rectangle_points(Point(-1,-1),Point(-4,-2),0.5)
+#    if isinsiderect(Point(-1,-1),Point(1,5),A,B,C,D,Point(1,4)):
+#        print('yes')
