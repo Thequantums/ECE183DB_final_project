@@ -6,8 +6,9 @@ import numpy as np
 import cv2
 import matplotlib.pyplot as plt
 import math
+from scipy import signal as s
+from scipy import ndimage as sim
 from PIL import Image as im
-
 class imgToObs():
 
 
@@ -86,63 +87,22 @@ class imgToObs():
         output = np.pad(input, ((0, xmatch - xin), (0, ymatch - yin)), 'edge')
         return output
 
-    def obsSpaceGen(self,robotShape,obsSpace):
-        #Get x/y shape of robot (assuming rectangular)
-        [x,y] = robotShape
-        xcent = math.ceil(x/2)
-        ycent = math.ceil(y/2)
-        dist = max(xcent,ycent)
-        #pad obsspace to prevent rollover
-        #print(np.shape(obsSpace))
-        obs = np.pad(obsSpace,((dist,dist),(dist,dist)),'constant',constant_values=0)
-        #print(np.shape(obs))
-        #pad robot shape with zeros, to fix rotation
+    def toBin(self,input):
+        return np.logical_not(np.logical_not(input))
+
+    def obsSpaceGen(self,robotSpace,obsSpace):
+        [x,y] = robotSpace
         robot = np.ones((y, x))
-        space = np.zeros((y, x))
-        newspace = np.concatenate((space, robot, space), 0)
-        empty = np.concatenate((space, space, space))
-        robotSpace = np.hstack((empty, newspace, empty))
-        RS = im.fromarray(robotSpace)
-        robotAngles = []
+        configSpace = []
         # Create array of robot angle shifts
-        for i in range(0, 180):
-            robotAngles.append(self.padToMatch(np.array(RS.rotate(i)), obs))
+        for i in range(0, 90, 45):
+            rot = sim.rotate(robot,i,reshape = True)
+            configSpace.append(self.toBin(s.convolve2d(obsSpace, rot)))
+            print(i)
+        return configSpace[0]
 
-        print(obs)
-        plt.imshow(obs,interpolation='nearest')
-        plt.show()
-        #check all angles for robotAngles
-        newobs = []
-        for x in range(0, np.shape(obs)[1]):
-            newobsy = []
-            for y in range(0,np.shape(obs)[0]):
-                newobst = []
-                for i in range(0, 90,45):
-                    newobst.append(np.any(np.logical_and(obs, robotAngles[i])))
-                obs = np.roll(obs,-1,axis = 0)
-                newobsy.append(newobst)
-                print('Y:',y)
-            obs = np.roll(obs, -1, axis = 1)
-            newobs.append(newobsy)
-            print("X:",x)
-        newobs = np.array(newobs)
-        newobs = np.roll(newobs,2*dist,axis=0)
-        newobs = np.roll(newobs,2*dist, axis=1)
-        newobs = newobs[0:-2*dist,0:-2*dist]
-        print("done")
-        print(np.shape(np.array(newobs)))
-        [d1,d2,d3] = np.shape(newobs)
-        print(np.any(newobs))
-        deobs = np.dsplit(np.array(newobs),d3)
-        print(deobs)
-        print(np.shape(np.squeeze(deobs[0])))
-        plt.imshow(np.squeeze(deobs[0]).T,interpolation='nearest')
-        plt.show()
-        plt.imshow(np.squeeze(deobs[1]).T, interpolation='nearest')
-        plt.show()
-        print(newobs)
 
-        return np.array(deobs)
+
 
 if __name__ == "__main__":
     o = imgToObs(imagepath = "C:/Users/Cooper/PycharmProjects/183Final/controllers/hawk_control2/testmaze.png")
