@@ -64,15 +64,20 @@ class rrt():
             yflr = math.floor(point[1]) - 1 #This is because we need to reference the obstacles array, which needs discrete indeces.
             xcl = math.ceil(point[0]) - 1
             ycl = math.ceil(point[1]) - 1
-            xmax = obstacles.shape[0]-1
-            ymax = obstacles.shape[1]-1
+            xmax = obstacles.shape[0] - 1
+            ymax = obstacles.shape[1] - 1
+
+            theta = point[2] * 180 / (2*math.pi)
+            theta = round(theta/5)
+            theta = theta % 36
+
 
             if xflr >= xmax or xcl >= xmax: #make sure bounds are not violated
                 xflr = xcl = xmax
             if yflr >= ymax or ycl >= ymax:
                 yflr = ycl = ymax
 
-            if(obstacles[xflr][yflr] or obstacles[xflr][ycl] or obstacles[xcl][yflr] or obstacles[xcl][ycl]): #if the rounded location (via any rounding scheme) is a wall (True in the obstacle array), say so
+            if(obstacles[xflr][yflr][theta] or obstacles[xflr][ycl][theta] or obstacles[xcl][yflr][theta] or obstacles[xcl][ycl][theta]): #if the rounded location (via any rounding scheme) is a wall (True in the obstacle array), say so
                 return True
         return False
 

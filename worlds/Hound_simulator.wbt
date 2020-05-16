@@ -404,18 +404,6 @@ hawk {
   translation -0.93 0.22 -0.9
   rotation 1 0 0 -1.5707953071795862
   name "Mavic 2 PRO(1)"
-  cameraSlot [
-    Camera {
-      rotation 1 0 0 -1.5708
-      fieldOfView 1
-      width 1024
-      height 1024
-      recognition Recognition {
-        occlusion FALSE
-        frameThickness 3
-      }
-    }
-  ]
 }
 hippo {
   translation -0.95 0.120004 2.68

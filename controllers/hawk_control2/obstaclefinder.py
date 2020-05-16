@@ -98,7 +98,7 @@ class imgToObs():
         robotRe = np.array(im.fromarray(robot).resize(size=(round(np.shape(robot)[1]/scaledown),round(np.shape(robot)[0]/scaledown))))
         configSpace = []
         # Create array of robot angle shifts
-        for i in range(0, 90, 15):
+        for i in range(0, 180, 5):
             r = sim.rotate(robotRe,i,reshape = True)
             [xT,yT] = np.shape(r)
             xT = round(xT / 2)
@@ -110,7 +110,7 @@ class imgToObs():
             for c in configSpace:
                 plt.imshow(np.add(c,obsSpace))
                 plt.show()
-        return configSpace
+        return np.array(configSpace)
 
 
 
