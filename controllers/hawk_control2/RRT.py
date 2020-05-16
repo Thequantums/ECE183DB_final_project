@@ -118,8 +118,8 @@ class rrt():
         endtime = 1     #endtime in seconds
         instructionVector = []  #vector for instructions
         # Full spin and Full velocity
-        theta_dot = 2.979/4
-        V = 126.6
+        theta_dot = 2.979/2
+        V = 126.6/4
         currentPos = [startnode[0],startnode[1],startnode[2],self.nodesList.index(startnode),'',0]  #initialize currentPosition to startPosition
         prevPos = currentPos    #initialize prevPos to currentPos
         theta_path = math.atan2(targetnode[1] - startnode[1], targetnode[0] - startnode[0]) #calculate theta_path for the given two points

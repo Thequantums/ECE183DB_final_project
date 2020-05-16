@@ -8,6 +8,7 @@ import matplotlib.pyplot as plt
 import math
 from scipy import signal as s
 from scipy import ndimage as sim
+from scipy import misc as m
 from PIL import Image as im
 class imgToObs():
 
@@ -90,16 +91,28 @@ class imgToObs():
     def toBin(self,input):
         return np.logical_not(np.logical_not(input))
 
-    def obsSpaceGen(self,robotSpace,obsSpace):
+    def obsSpaceGen(self,robotSpace,obsSpace,debug = False):
         [x,y] = robotSpace
         robot = np.ones((y, x))
+        print(np.shape(robot))
         configSpace = []
+        rotbot = []
+        xsh = []
+        ysh = []
         # Create array of robot angle shifts
-        for i in range(0, 90, 45):
-            rot = sim.rotate(robot,i,reshape = True)
-            configSpace.append(self.toBin(s.convolve2d(obsSpace, rot)))
-            print(i)
-        return configSpace[0]
+        for i in range(0, 90, 15):
+            r = sim.rotate(robot,i,reshape = True)
+            [xT,yT] = np.shape(r)
+            xT = round(xT / 2)
+            yT = round(yT / 2)
+            temp = self.toBin(s.convolve2d(obsSpace, r))[xT:-xT,yT:-yT]
+            configSpace.append(np.array(im.fromarray(temp).resize(resample = im.BICUBIC,size = (np.shape(obsSpace)[1],np.shape(obsSpace)[0]))))
+            print(np.shape(configSpace[-1]))
+        if debug:
+            for c in configSpace:
+                plt.imshow(np.add(c,obsSpace))
+                plt.show()
+        return configSpace
 
 
 
@@ -109,4 +122,8 @@ if __name__ == "__main__":
     gray = cv2.cvtColor(o.image, cv2.COLOR_BGR2GRAY)
     plt.imshow(np.array(gray))
     plt.show()
-    o.obsSpaceGen([20,20],np.logical_not(np.array(gray)))
+    conSpace = o.obsSpaceGen([22,22],np.logical_not(np.array(gray)))
+    gray = np.logical_not(np.array(gray))
+    for obs in conSpace:
+        plt.imshow(np.add(gray.astype(int),obs.astype(int)))
+        plt.show()
