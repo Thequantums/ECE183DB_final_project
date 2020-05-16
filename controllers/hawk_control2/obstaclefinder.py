@@ -91,23 +91,21 @@ class imgToObs():
     def toBin(self,input):
         return np.logical_not(np.logical_not(input))
 
-    def obsSpaceGen(self,robotSpace,obsSpace,debug = False):
+    def obsSpaceGen(self,robotSpace,obsSpace,scaledown,debug = False):
+        obs = np.array(im.fromarray(obsSpace).resize(size=(round(np.shape(obsSpace)[1]/scaledown),round(np.shape(obsSpace)[0]/scaledown))))
         [x,y] = robotSpace
         robot = np.ones((y, x))
-        print(np.shape(robot))
+        robotRe = np.array(im.fromarray(robot).resize(size=(round(np.shape(robot)[1]/scaledown),round(np.shape(robot)[0]/scaledown))))
         configSpace = []
-        rotbot = []
-        xsh = []
-        ysh = []
         # Create array of robot angle shifts
         for i in range(0, 90, 15):
-            r = sim.rotate(robot,i,reshape = True)
+            r = sim.rotate(robotRe,i,reshape = True)
             [xT,yT] = np.shape(r)
             xT = round(xT / 2)
             yT = round(yT / 2)
-            temp = self.toBin(s.convolve2d(obsSpace, r))[xT:-xT,yT:-yT]
+            temp = self.toBin(s.convolve2d(obs, r))[xT:-xT,yT:-yT]
             configSpace.append(np.array(im.fromarray(temp).resize(resample = im.BICUBIC,size = (np.shape(obsSpace)[1],np.shape(obsSpace)[0]))))
-            print(np.shape(configSpace[-1]))
+            print(i)
         if debug:
             for c in configSpace:
                 plt.imshow(np.add(c,obsSpace))

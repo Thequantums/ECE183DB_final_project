@@ -15,7 +15,7 @@ def runRRT(dynamics, robotSize, data ,start = [0,50],end = [1950,1650]):
     data = data[::-1,:]
     plt.imshow(data,interpolation='nearest') #show 2D representation of map
     img = obstaclefinder.imgToObs()  # create img from imported picture
-    obs = img.obsSpaceGen(robotSize, data)
+    obs = img.obsSpaceGen(robotSize, data, 1)
 
     #initialize RRT
     r = RRT.rrt(N = 5000,obstacles = obs.T, obstacletype = 'array', maxcoords = obs.shape,
@@ -37,7 +37,7 @@ if __name__ == "__main__":
         imagepath="C:/Users/Cooper/PycharmProjects/ECE183DA/lab3/maze.bmp")  # create img from imported picture
     gray = cv2.cvtColor(img.image, cv2.COLOR_BGR2GRAY)
     plt.imshow(np.logical_not(np.array(gray)))
-    conSpace = img.obsSpaceGen([10, 20], np.logical_not(np.array(gray)))
+    conSpace = img.obsSpaceGen([25, 25], np.logical_not(np.array(gray)),1,debug = True)
     origin = [35 , 215 , 0, 0, '', 0]
     # initialize RRT
     r = RRT.rrt(N=3000, obstacles=conSpace[0].T, obstacletype='array', maxcoords=conSpace[0].shape,
