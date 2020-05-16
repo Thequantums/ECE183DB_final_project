@@ -15,10 +15,10 @@ def runRRT(dynamics, robotSize, data ,start = [0,50],end = [1950,1650]):
     data = data[::-1,:]
     plt.imshow(data,interpolation='nearest') #show 2D representation of map
     img = obstaclefinder.imgToObs()  # create img from imported picture
-    obs = img.obsSpaceGen(robotSize, data, 1)
+    obs = img.obsSpaceGen(robotSize, data, 10)
 
     #initialize RRT
-    r = RRT.rrt(N = 5000,obstacles = obs.T, obstacletype = 'array', maxcoords = obs.shape,
+    r = RRT.rrt(N = 5000,obstacles = obs[0].T, obstacletype = 'array', maxcoords = obs[0].shape,
             origin = start+[0,0,'',0],goal = end+[0], live = False, divis = 10)
     #Perform RRT
     trajectory = r.rrt( dynamics,plotting = True,verbose = True)

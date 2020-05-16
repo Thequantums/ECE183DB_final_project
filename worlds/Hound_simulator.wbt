@@ -408,8 +408,8 @@ hawk {
     Camera {
       rotation 1 0 0 -1.5708
       fieldOfView 1
-      width 256
-      height 256
+      width 1024
+      height 1024
       recognition Recognition {
         occlusion FALSE
         frameThickness 3
