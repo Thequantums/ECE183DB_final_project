@@ -108,7 +108,7 @@ class imgToObs():
             print(i)
         if debug:
             for c in configSpace:
-                plt.imshow(np.add(c,obsSpace))
+                plt.imshow(np.add(c.astype(int),obsSpace.astype(int)))
                 plt.show()
         return np.array(configSpace)
 
