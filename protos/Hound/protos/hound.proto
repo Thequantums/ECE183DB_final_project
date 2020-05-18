@@ -3,10 +3,11 @@ PROTO hound [
   field SFRotation rotation     0 1 0 0
   field SFFloat    bodyMass     1
   field SFString   name         "Hound"
-  field SFString   controller   "hound_controller"
+  field SFString   controller   "hounder"
   field SFInt32    e_channel      1 
   field SFInt32    r_channel      1
-  field SFFloat    maxVelocity    10
+  field SFFloat    maxVelocity    20
+  field MFColor    RecognitionColors []
 ]
 {
 	Robot {
@@ -163,9 +164,7 @@ PROTO hound [
   ]
   name IS name
   boundingObject USE HBODY
-  recognitionColors [
-    1 1 1
-  ]
+  recognitionColors IS RecognitionColors
   physics Physics {
     density -1
     mass IS bodyMass
