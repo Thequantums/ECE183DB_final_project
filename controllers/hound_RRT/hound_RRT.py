@@ -55,7 +55,7 @@ sent_done = sent_request = False
 # Index: Index into the trajectory list
 # Counter: Keeps track how long a input has been inputted since instructions are for a given
 #          amount of time (Always a multiple of a time step) 
-path = [[MAX_SPEED,MAX_SPEED,50],[0,0,15],[-MAX_SPEED/5,MAX_SPEED/5,128], "Push"]
+path = [[MAX_SPEED,MAX_SPEED,125],[0,0,15],[MAX_SPEED/5,-MAX_SPEED/5,128], "Push"]
 print(path)
 index = 0
 counter = 0
