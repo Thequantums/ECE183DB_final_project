@@ -1,7 +1,7 @@
 import sys
 
 import matplotlib.pyplot as plt
-import RRT
+import RRTM
 import obstaclefinder
 import math
 import numpy as np
@@ -18,10 +18,10 @@ def runRRT(dynamics, robotSize, data ,start = [0,50],end = [1950,1650]):
     if dynamics == 'HOUND':
         scaleFactor = 3
     elif dynamics == 'HIPPO':
-        scaleFactor = 8
-    obs = img.obsSpaceGen(robotSize, data, scaleFactor)
+        scaleFactor = 12
+    obs = img.obsSpaceGen(robotSize, data, scaleFactor,debug=True)
     #initialize RRT
-    r = RRT.rrt(N = 10000,obstacles = obs.T, obstacletype = 'array', maxcoords = obs[0].shape,
+    r = RRTM.rrt(N = 10000,obstacles = obs.T, obstacletype = 'array', maxcoords = obs[0].shape,
             origin = start+[0,0,'',0],goal = end+[0], live = False, divis = 10)
     #Perform RRT
     trajectory = r.rrt( dynamics,plotting = True,verbose = True)
@@ -40,11 +40,11 @@ if __name__ == "__main__":
         imagepath="C:/Users/Cooper/PycharmProjects/ECE183DA/lab3/maze.bmp")  # create img from imported picture
     gray = cv2.cvtColor(img.image, cv2.COLOR_BGR2GRAY)
     plt.imshow(np.logical_not(np.array(gray)))
-    conSpace = img.obsSpaceGen([25, 25], np.logical_not(np.array(gray)),1,debug=True)
+    conSpace = img.obsSpaceGen([25, 25], np.logical_not(np.array(gray)),1)
     origin = [35 , 215 , 0, 0, '', 0]
     # initialize RRT
 
-    r = RRT.rrt(N=3000, obstacles=conSpace.T, obstacletype='array', maxcoords=conSpace[0].shape,
+    r = RRTM.rrt(N=3000, obstacles=conSpace.T, obstacletype='array', maxcoords=conSpace[0].shape,
                 origin=origin, goal=[125 , 30 , math.pi / 2], live=False, divis=5)
     # print('ORIGIN',r.origin)
     # test = r.origin

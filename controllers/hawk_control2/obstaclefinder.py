@@ -10,6 +10,8 @@ from scipy import signal as s
 from scipy import ndimage as sim
 from scipy import misc as m
 from PIL import Image as im
+from mpl_toolkits.mplot3d import Axes3D
+
 class imgToObs():
 
 
@@ -108,7 +110,7 @@ class imgToObs():
             print(i)
         if debug:
             for c in configSpace:
-                plt.imshow(np.add(c.astype(int),obsSpace.astype(int)))
+                plt.imshow(np.flip(np.add(c.astype(int),obsSpace.astype(int)),0))
                 plt.show()
         return np.array(configSpace)
 

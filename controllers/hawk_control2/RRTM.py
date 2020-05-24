@@ -8,7 +8,7 @@ class rrt():
 
 
     def __init__(self, origin = [250, 0, 0, 0,'',0], maxcoords = [500,500], stepsize = 5, N = 10000, obstacles = [[0, 0, 100, 500], [400, 0, 500, 500], [200, 300, 400, 325],
-                     [100, 350, 250, 375]], goal = [140, 400, 150, 410], obstacletype = 'vertex', live = False, divis = 1,scale = 10):
+                     [100, 350, 250, 375]], goal = [140, 400, 150, 410], obstacletype = 'vertex', live = False, divis = 1,pixPerM = 10):
         self.origin = origin  # Origin point, in form x,y,parent
         self.maxcoords = maxcoords  # Max values of field. x,y form. Assumes bottom left is 0,0
         self.N = N  # Iterations to run
@@ -16,12 +16,11 @@ class rrt():
         # scaled up by the scale variable, in order to make the system sufficiently continuous. Rectangles only, in form xmin, ymin, xmax, ymax
         self.goal = goal  # goal. Rectangles only, in form xmin, ymin, xmax, ymax
         self.nodesList = [origin]  # list of all nodes
-        self.robotRadius = 5*scale    #Radius of the circular robot estimate
         self.obstacletype = obstacletype    #Whether we're using the vertex obstacle type (manual entry) or the array type (import from obstacleFinder)
         self.live = live    #Whether we're using the "live" plotter or the end-time plotter
         self.divis = divis #draw every divis changes
-        self.scale = scale  #scale-up constant for graph
         self.sweetener = 100 #determines how often to push the tree towards the goal state. EG a value of 100 means it sets the random point to the goal
+        self.scaler = pixPerM
         #every 100 iterations
         if self.live:   #Turns on interactive plotting if in live mode
             plt.ion()
@@ -33,7 +32,7 @@ class rrt():
 
     def finddist(self,node1, node2, typec):  # returns the euclidian distance between two nodes
         if typec == 'HOUND':
-            Vmax = .5 #Max distance for one second movement
+            Vmax = .5 * self.scaler #Max distance for one second movement
             delta_max = 3.039003906 #max radians for one second rotation
             theta_path = math.atan2(node2[1] - node1[1], node2[0] - node1[0])
             theta_diff1 = theta_path - node1[2]
@@ -51,7 +50,7 @@ class rrt():
             elif theta_diff2 <= -math.pi:
                 theta_diff2 = theta_diff2 + 2*math.pi
         else:
-            Vmax = .4 #Max distance for one second movement
+            Vmax = .4 * self.scaler#Max distance for one second movement
             delta_max = 0.596807115 #max radians for one second rotation
             theta_diff1 = 0 # Hippo has no theta one to cover so its zero
             theta_diff2 = node2[2] - node1[2]
@@ -60,34 +59,42 @@ class rrt():
             elif theta_diff2 <= -math.pi:
                 theta_diff2 = theta_diff2 + 2*math.pi
 
-        return (self.eucldist(node1, node2) / Vmax) + (theta_diff_1/delta_max + theta_diff_2/delta_max)
+        return (self.eucldist(node1, node2) / Vmax) + (theta_diff1/delta_max + theta_diff2/delta_max)
 
 
     def randomPoint(self):  # generates a random point. Uses a larger space than the actual Configuration space in order to increase steps towards the outside of the space
         point = [random.uniform(0, self.maxcoords[0]), random.uniform(0, self.maxcoords[1]),random.uniform(0,2*math.pi),0,'',0]
         return point
 
-
-    def obsCheck(self, point, obstacles):  # checks if the point is inside an obstacle. if it is, returns the origin. ##FUTURE## return the closest allowed point
+    def obsCheck(self, point,
+                 obstacles):  # checks if the point is inside an obstacle. if it is, returns the origin. ##FUTURE## return the closest allowed point
         if self.obstacletype == 'vertex':
             for o in obstacles:
                 if (((o[0] < point[0] + self.robotRadius < o[2]) or (o[0] < point[0] - self.robotRadius < o[2])) and (
                         (o[1] < point[1] + self.robotRadius < o[3]) or (o[1] < point[1] - self.robotRadius < o[3]))):
                     return True
-        elif self.obstacletype == 'array':  #array type obstacles not currently using robot radius
-            xflr = math.floor(point[0]) - 1 #create floor and ceilinged variables to make sure we cover all possible cases.
-            yflr = math.floor(point[1]) - 1 #This is because we need to reference the obstacles array, which needs discrete indeces.
+        elif self.obstacletype == 'array':  # array type obstacles not currently using robot radius
+            xflr = math.floor(
+                point[0]) - 1  # create floor and ceilinged variables to make sure we cover all possible cases.
+            yflr = math.floor(
+                point[1]) - 1  # This is because we need to reference the obstacles array, which needs discrete indeces.
             xcl = math.ceil(point[0]) - 1
             ycl = math.ceil(point[1]) - 1
-            xmax = obstacles.shape[0]-1
-            ymax = obstacles.shape[1]-1
+            xmax = obstacles.shape[0] - 1
+            ymax = obstacles.shape[1] - 1
 
-            if xflr >= xmax or xcl >= xmax: #make sure bounds are not violated
+            theta = point[2] * 180 / (2 * math.pi)
+            theta = round(theta / 5)
+            theta = theta % 36
+
+            if xflr >= xmax or xcl >= xmax:  # make sure bounds are not violated
                 xflr = xcl = xmax
             if yflr >= ymax or ycl >= ymax:
                 yflr = ycl = ymax
 
-            if(obstacles[xflr][yflr] or obstacles[xflr][ycl] or obstacles[xcl][yflr] or obstacles[xcl][ycl]): #if the rounded location (via any rounding scheme) is a wall (True in the obstacle array), say so
+            if (obstacles[xflr][yflr][theta] or obstacles[xflr][ycl][theta] or obstacles[xcl][yflr][theta] or
+                    obstacles[xcl][ycl][
+                        theta]):  # if the rounded location (via any rounding scheme) is a wall (True in the obstacle array), say so
                 return True
         return False
 
@@ -134,7 +141,7 @@ class rrt():
         instructionVector = []  #vector for instructions
         # Full spin and Full velocity
         theta_dot = 3.039003906
-        V = .5
+        V = .5 * self.scaler
         currentPos = [startnode[0],startnode[1],startnode[2],self.nodesList.index(startnode),'',0]  #initialize currentPosition to startPosition
         prevPos = currentPos    #initialize prevPos to currentPos
         theta_path = math.atan2(targetnode[1] - startnode[1], targetnode[0] - startnode[0]) #calculate theta_path for the given two points
@@ -165,7 +172,7 @@ class rrt():
         elif theta_diff <= -math.pi:
             theta_diff = theta_diff + 2*math.pi
         path_right = True
-        if (final_diff < 0)
+        if theta_diff < 0:
             path_right = False    
         
         # Final diff is to find out whether you should turn left or right to align theta for the final spot
@@ -175,7 +182,7 @@ class rrt():
         elif theta_diff <= -math.pi:
             final_diff = final_diff + 2*math.pi 
         final_right = True
-        if (final_diff < 0)
+        if final_diff < 0:
             final_right = False
 
         # Incremental step
@@ -264,7 +271,7 @@ class rrt():
         instructionVector = []  #vector for instructions
         # Full spin and Full velocity
         theta_dot = 0.596807115
-        V = .4
+        V = .4 * self.scaler
         currentPos = [startnode[0],startnode[1],startnode[2],self.nodesList.index(startnode),'',0]  #initialize currentPosition to startPosition
         prevPos = currentPos    #initialize prevPos to currentPos
         theta_path = math.atan2(targetnode[1] - startnode[1], targetnode[0] - startnode[0]) #calculate theta_path for the given two points
@@ -302,7 +309,7 @@ class rrt():
         elif theta_diff <= -math.pi:
             final_diff = final_diff + 2*math.pi 
         final_right = True
-        if (final_diff < 0)
+        if final_diff < 0:
             final_right = False
 
         # Incremental step
@@ -553,8 +560,8 @@ class rrt():
                  plt.ioff()
             plt.show()
 
-            xg = (np.array(xg) / self.scale).tolist()   #scale trajectory down from increased scale
-            yg = (np.array(yg) / self.scale).tolist()
+            xg = (np.array(xg)).tolist()   #scale trajectory down from increased scale
+            yg = (np.array(yg)).tolist()
             trajectory = []
             for i in range(0,len(xg)):
                 trajectory.append([xg[i],yg[i],tg[i],sg[i]])
