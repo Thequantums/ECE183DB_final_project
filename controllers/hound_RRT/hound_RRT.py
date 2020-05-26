@@ -1,22 +1,45 @@
 from controller import Robot, Motor, Emitter, Receiver, Keyboard
 
 # This function needs to process messages recieved from other members, all messages should have
-# sender id as first element as well as message type as second element, with all other info following
+# intended receiver as first two elements, purpose as third element with all other info following
 # these two elements, returns an int that represents a code as to what should be done based on message
 def process(message):
-    message = str(message)
-    message = message.replace('b\'','')
-    
-    #print(message)
-    parsed = message.split()
-    if parsed[0] == 'Hippo:':
-        print('Message Not for me, ignored')
-    else:
-        print(message)
+    message = message.decode('utf-8')
+    print(message)
+    message = message.split()
+    if (message[0] != "Hound" or message[1] != "1") and message[0] != "All":
+        return 0
+    if message[1] == "Startup":
+        return -1
+    if message[1] == "Path":
+        instruction = []
+        for x in range(2,5):
+            instruction.append(float(message[x]))
+        path.append(instruction)
+        return 0
+    if message[1] == "Cap":
+        path.append(message[2])
+        return 0
+    if message[1] == "Go":
+        return 1
+    if message[1] == "Stall":
+        return 0
+        # Code for recieving stall news, should return some other positive number
+    return 0 # Defualt don't do anything for other messages
 
 # This function should send messages to other members and messages should follow the format as
 # described above
-def send(message):
+def send(code):
+    if code == "Done":
+        message = bytes("Hawk Done Hound 0", 'utf-8')
+        emitter.send(message)
+    elif code == "Request":
+        message = bytes("Hawk Request Hound 0", 'utf-8')
+        emitter.send(message)
+    elif code == "Stall":
+        message = bytes("All Stall Hound 0", 'utf-8')
+        emitter.send(message)
+        # Needs to be filled up with further code to get full implementation
     return 1
        
 #Max angular rotation of Hound wheels
@@ -39,11 +62,6 @@ for i in range(3):
         wheels[i].setPosition(float('inf'))
         wheels[i].setVelocity(0.0)
 
-#All Robots wait one second before doing anything, this is for stability purposes not important
-while robot.step(TIME_STEP) != -1:
-    if robot.getTime() > 1.0:
-        break
-
 # Initializes all state machine variables
 start_mode = True
 done_mode = path_mode = stall_mode = wait_mode = push_mode = r_mode = False
@@ -55,12 +73,18 @@ sent_done = sent_request = False
 # Index: Index into the trajectory list
 # Counter: Keeps track how long a input has been inputted since instructions are for a given
 #          amount of time (Always a multiple of a time step) 
-path = [[MAX_SPEED,MAX_SPEED,125],[0,0,15],[MAX_SPEED/5,-MAX_SPEED/5,128], "Push"]
+#path = [[MAX_SPEED,MAX_SPEED,125],[0,0,15],[MAX_SPEED/5,-MAX_SPEED/5,64], "Push"]
+path = []
 print(path)
 index = 0
 counter = 0
-path_mode = True
-start_mode = False
+# path_mode = True
+# start_mode = False
+
+#All Robots wait one second before doing anything, this is for stability purposes not important
+while robot.step(TIME_STEP) != -1:
+    if robot.getTime() > 1.0:
+        break
 
 # This is the main loop for the controller
 while robot.step(TIME_STEP) != -1:
@@ -72,34 +96,38 @@ while robot.step(TIME_STEP) != -1:
     # 1: All members have recieved full path, time to move
     # 2-n: Stall order received, stall according to situation (this will change once actual code is here)
     # 0: Message does not effect state, continue as you were 
-    if receiver.getQueueLength() > 0:
+    while receiver.getQueueLength() > 0:
         message = receiver.getData()
         code = process(message)
-        if code == 1:
+        if code == 0:
+            pass
+        elif code == 1:
             path_mode = True
             wait_mode = False
         elif code == -1:
+            start_mode = False
             wait_mode = True
-        elif (code != 0 and path_mode):
+        elif path_mode: # This case may need editing to be consistent with RCAP
             path_mode = False
             stall_mode = True
             stall_code = code
         receiver.nextPacket()
     
+    # Start mode does nothing and simply waits
     if start_mode:
         wheels[0].setVelocity(0)
         wheels[1].setVelocity(0)
     
     # Code for done mode, final state for Hound
     # Sets the velocities to zero and does not not deviate from this behaviour and will send message
-    # To others that it is done (will only send this message once)0
+    # To others that it is done (will only send this message once)
     elif done_mode:
         wheels[0].setVelocity(0)
         wheels[1].setVelocity(0)
         if not sent_done:
             print("I am done")
             sent_done = True
-            #send(Done)
+            send("Done")
             
     # This runs the push protocol to clear buttons, this is simply sets pusher down for a second and then
     # it enters the wait mode automatically, resets necessary variables at end                
@@ -122,7 +150,7 @@ while robot.step(TIME_STEP) != -1:
         wheels[1].setVelocity(0)
         if not sent_request:
             sent_request = True
-            #send('Request')
+            send('Request')
             
             
     # This section is to handle stalls, idea is that depending on the messages between cars
@@ -141,12 +169,14 @@ while robot.step(TIME_STEP) != -1:
     elif path_mode:
         current = path[index]
         if type(current) == str:
+            # Change State and refresh variables for next time
             path_mode = False
             counter = 0
             index = 0
             path = []
             wheels[0].setVelocity(0)
             wheels[1].setVelocity(0)
+            # Path cap decides next movement
             if current == "Done":
                 done_mode = True
             elif current == "Push":
