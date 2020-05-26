@@ -60,7 +60,7 @@ class rrt():
             elif theta_diff2 <= -math.pi:
                 theta_diff2 = theta_diff2 + 2*math.pi
 
-        return (self.eucldist(node1, node2) / Vmax) + (theta_diff_1/delta_max + theta_diff_2/delta_max)
+        return (self.eucldist(node1, node2) / Vmax) + (theta_diff1/delta_max + theta_diff2/delta_max)
 
 
     def randomPoint(self):  # generates a random point. Uses a larger space than the actual Configuration space in order to increase steps towards the outside of the space
@@ -165,7 +165,7 @@ class rrt():
         elif theta_diff <= -math.pi:
             theta_diff = theta_diff + 2*math.pi
         path_right = True
-        if (final_diff < 0)
+        if (theta_diff < 0):
             path_right = False    
         
         # Final diff is to find out whether you should turn left or right to align theta for the final spot
@@ -175,7 +175,7 @@ class rrt():
         elif theta_diff <= -math.pi:
             final_diff = final_diff + 2*math.pi 
         final_right = True
-        if (final_diff < 0)
+        if (final_diff < 0):
             final_right = False
 
         # Incremental step
@@ -302,7 +302,7 @@ class rrt():
         elif theta_diff <= -math.pi:
             final_diff = final_diff + 2*math.pi 
         final_right = True
-        if (final_diff < 0)
+        if (final_diff < 0):
             final_right = False
 
         # Incremental step

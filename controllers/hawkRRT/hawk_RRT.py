@@ -331,8 +331,8 @@ while robot.step(timestep) != -1 and killswitch != 1:
         data = np.array(configSpace)
         data = np.transpose(data)
         #calling to map the RRT
-        path = lab3.runRRT('HOUND', [20,40], data, houndstart, [830,1130])
-        path = lab3.runRRT('HIPPO', [90,130], data, hippostart, [830,1130])
+        pathHD = lab3.runRRT('HOUND', [20,40], data, houndstart, [830,1130])
+        pathHP = lab3.runRRT('HIPPO', [90,130], data, hippostart, [830,1130])
         print(path)
         if False:
             # COLLISION AVOIDANCE CODE
