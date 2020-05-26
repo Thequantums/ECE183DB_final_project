@@ -4,27 +4,50 @@ from controller import Robot, Motor, Emitter, Receiver, Keyboard
 # sender id as first element as well as message type as second element, with all other info following
 # these two elements, returns an int that represents a code as to what should be done based on message
 def process(message):
-    message = str(message)
-    message = message.replace('b\'','')
-    
-    #print(message)
-    parsed = message.split()
-    if parsed[0] == 'Hippo:':
-        print('Message Not for me, ignored')
-    else:
-        print(message)
+    message = message.decode('utf-8')
+    print(message)
+    message = message.split()
+    if (message[0] != "Hippo" or message[1] != "1") and message[0] != "All":
+        return 0
+    if message[1] == "Startup":
+        return -1
+    if message[2] == "Path":
+        instruction = []
+        for x in range(2,7):
+            instruction.append(float(message[x]))
+        path.append(instruction)
+        return 0
+    if message[2] == "Cap":
+        path.append(message[2])
+        return 0
+    if message[1] == "Go":
+        return 1
+    if message[1] == "Stall":
+        return 0
+        # Code for recieving stall news, should return some other positive number
+    return 0 # Defualt don't do anything for other messages
 
 # This function should send messages to other members and messages should follow the format as
 # described above
-def send(message):
+def send(code):
+    if code == "Done":
+        message = bytes("Hawk Done Hippo 0", 'utf-8')
+        emitter.send(message)
+    elif code == "Request":
+        message = bytes("Hawk Request Hippo 0", 'utf-8')
+        emitter.send(message)
+    elif code == "Stall":
+        message = bytes("All Stall Hippo 0", 'utf-8')
+        emitter.send(message)
+        # Needs to be filled up with further code to get full implementation
     return 1
        
 #Max angular rotation of Hound wheels
-MAX_SPEED = 14
-MAX_SPEEDX = 8
-MAX_SPEEDZ = 0
-Wheel23 = MAX_SPEEDX + MAX_SPEEDZ
-Wheel14 = MAX_SPEEDX - MAX_SPEEDZ
+#MAX_SPEED = 14
+#MAX_SPEEDX = 8
+#MAX_SPEEDZ = 0
+#Wheel23 = MAX_SPEEDX + MAX_SPEEDZ
+#Wheel14 = MAX_SPEEDX - MAX_SPEEDZ
 
 #Initializes Robot and its parts
 # create the Robot instance.
@@ -49,10 +72,6 @@ for i in range(4):
     wheels.append(robot.getMotor(wheelsNames[i]))
     wheels[i].setPosition(float('inf'))
     wheels[i].setVelocity(0.0)
-    
-while robot.step(TIME_STEP) != -1:
-    if robot.getTime() > 1.0:
-        break
 
 # Initializes all state machine variables
 start_mode = True
@@ -65,12 +84,18 @@ sent_done = sent_request = False
 # Index: Index into the trajectory list
 # Counter: Keeps track how long a input has been inputted since instructions are for a given
 #          amount of time (Always a multiple of a time step) 
-path = [[Wheel14,Wheel23,Wheel23,Wheel14,663],[0,0,0,0,5],[MAX_SPEED,-MAX_SPEED,MAX_SPEED,-MAX_SPEED,329],[0,0,0,0,5], "Push"]
+
+#path = [[Wheel14,Wheel23,Wheel23,Wheel14,663],[0,0,0,0,5],[MAX_SPEED,-MAX_SPEED,MAX_SPEED,-MAX_SPEED,329],[0,0,0,0,5], "Push"]
+path = []
 print(path)
 index = 0
 counter = 0
-path_mode = True
-start_mode = False
+#path_mode = True
+#start_mode = False
+
+while robot.step(TIME_STEP) != -1:
+    if robot.getTime() > 1.0:
+        break
 
 # This is the main loop for the controller
 while robot.step(TIME_STEP) != -1:
@@ -82,15 +107,18 @@ while robot.step(TIME_STEP) != -1:
     # 1: All members have recieved full path, time to move
     # 2-n: Stall order received, stall according to situation (this will change once actual code is here)
     # 0: Message does not effect state, continue as you were 
-    if receiver.getQueueLength() > 0:
+    while receiver.getQueueLength() > 0:
         message = receiver.getData()
         code = process(message)
+        if code == 0:
+            pass
         if code == 1:
             path_mode = True
             wait_mode = False
         elif code == -1:
+            start_mode = False
             wait_mode = True
-        elif (code != 0 and path_mode):
+        elif path_mode:
             path_mode = False
             stall_mode = True
             stall_code = code
@@ -113,7 +141,7 @@ while robot.step(TIME_STEP) != -1:
         if not sent_done:
             print("I am done")
             sent_done = True
-            #send(Done)
+            send('Done')
             
     # This runs the push protocol to clear buttons, this is simply sets pusher down for a second and then
     # it enters the wait mode automatically, resets necessary variables at end                
@@ -149,7 +177,7 @@ while robot.step(TIME_STEP) != -1:
         wheels[3].setVelocity(0)
         if not sent_request:
             sent_request = True
-            #send('Request')
+            send('Request')
             
             
     # This section is to handle stalls, idea is that depending on the messages between cars
