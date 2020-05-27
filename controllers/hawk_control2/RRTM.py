@@ -521,15 +521,16 @@ class rrt():
     def rrt(self,dynamics,verbose = False, plotting = False):   #Main implementation of RRT
         xg=[]
         yg=[]
-
+        print('Here?')
         self.initplot(self.goal, self.obstacles)    #initialize plot
-
+        print('Maybe Here?')
 
         for k in range(0, self.N):      #create (or attempt to create) N nodes
             if k % self.sweetener != 0:
                 xrand = self.randomPoint()  #choose a random point
             else:
                 xrand = self.goal
+            print('maybeeee Here?')
             xnear = self.findclosest(self.nodesList, xrand, dynamics)     #find the nearest node to the random point
             #xnear = self.findclosestOPT(self.nodesList, xrand)
             if dynamics == 'HOUND':

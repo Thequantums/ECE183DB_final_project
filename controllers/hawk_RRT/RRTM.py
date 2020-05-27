@@ -33,7 +33,7 @@ class rrt():
 
     def finddist(self,node1, node2, typec):  # returns the euclidian distance between two nodes
         if typec == 'HOUND':
-            Vmax = .5 #Max distance for one second movement
+            Vmax = .5 *10#Max distance for one second movement
             delta_max = 3.039003906 #max radians for one second rotation
             theta_path = math.atan2(node2[1] - node1[1], node2[0] - node1[0])
             theta_diff1 = theta_path - node1[2]
@@ -67,27 +67,35 @@ class rrt():
         point = [random.uniform(0, self.maxcoords[0]), random.uniform(0, self.maxcoords[1]),random.uniform(0,2*math.pi),0,'',0]
         return point
 
-
-    def obsCheck(self, point, obstacles):  # checks if the point is inside an obstacle. if it is, returns the origin. ##FUTURE## return the closest allowed point
+    def obsCheck(self, point,
+                 obstacles):  # checks if the point is inside an obstacle. if it is, returns the origin. ##FUTURE## return the closest allowed point
         if self.obstacletype == 'vertex':
             for o in obstacles:
                 if (((o[0] < point[0] + self.robotRadius < o[2]) or (o[0] < point[0] - self.robotRadius < o[2])) and (
                         (o[1] < point[1] + self.robotRadius < o[3]) or (o[1] < point[1] - self.robotRadius < o[3]))):
                     return True
-        elif self.obstacletype == 'array':  #array type obstacles not currently using robot radius
-            xflr = math.floor(point[0]) - 1 #create floor and ceilinged variables to make sure we cover all possible cases.
-            yflr = math.floor(point[1]) - 1 #This is because we need to reference the obstacles array, which needs discrete indeces.
+        elif self.obstacletype == 'array':  # array type obstacles not currently using robot radius
+            xflr = math.floor(
+                point[0]) - 1  # create floor and ceilinged variables to make sure we cover all possible cases.
+            yflr = math.floor(
+                point[1]) - 1  # This is because we need to reference the obstacles array, which needs discrete indeces.
             xcl = math.ceil(point[0]) - 1
             ycl = math.ceil(point[1]) - 1
-            xmax = obstacles.shape[0]-1
-            ymax = obstacles.shape[1]-1
+            xmax = obstacles.shape[0] - 1
+            ymax = obstacles.shape[1] - 1
 
-            if xflr >= xmax or xcl >= xmax: #make sure bounds are not violated
+            theta = point[2] * 180 / (2 * math.pi)
+            theta = round(theta / 5)
+            theta = theta % 36
+
+            if xflr >= xmax or xcl >= xmax:  # make sure bounds are not violated
                 xflr = xcl = xmax
             if yflr >= ymax or ycl >= ymax:
                 yflr = ycl = ymax
 
-            if(obstacles[xflr][yflr] or obstacles[xflr][ycl] or obstacles[xcl][yflr] or obstacles[xcl][ycl]): #if the rounded location (via any rounding scheme) is a wall (True in the obstacle array), say so
+            if (obstacles[xflr][yflr][theta] or obstacles[xflr][ycl][theta] or obstacles[xcl][yflr][theta] or
+                    obstacles[xcl][ycl][
+                        theta]):  # if the rounded location (via any rounding scheme) is a wall (True in the obstacle array), say so
                 return True
         return False
 
@@ -97,7 +105,7 @@ class rrt():
         instructionVector = []  #vector for instructions
         # Full spin and Full velocity
         theta_dot = 3.039003906
-        V = .5
+        V = .5*10
         currentPos = [startnode[0],startnode[1],startnode[2],self.nodesList.index(startnode),'',0]  #initialize currentPosition to startPosition
         prevPos = currentPos    #initialize prevPos to currentPos
         theta_path = math.atan2(targetnode[1] - startnode[1], targetnode[0] - startnode[0]) #calculate theta_path for the given two points
@@ -380,23 +388,29 @@ class rrt():
     def rrt(self,dynamics,verbose = False, plotting = False):   #Main implementation of RRT
         xg=[]
         yg=[]
-
+        print('Here?')
         self.initplot(self.goal, self.obstacles)    #initialize plot
-
+        print('Here?')
 
         for k in range(0, self.N):      #create (or attempt to create) N nodes
+            print('Here?')
             if k % self.sweetener != 0:
                 xrand = self.randomPoint()  #choose a random point
             else:
                 xrand = self.goal
+            print('Here?')
             xnear = self.findclosest(self.nodesList, xrand, dynamics)     #find the nearest node to the random point
             #xnear = self.findclosestOPT(self.nodesList, xrand)
+            print('Here?')
             if dynamics == 'HOUND':
+                print("getting closer")
                 xnew = self.takestepHOUND(xnear, xrand, self.nodesList)  #take one step towards the random point from the nearest node and create a new node
+                print('dont read this')
             else:
                 xnew = self.takestepHIPPO(xnear, xrand,
                                           self.nodesList)  # take one step towards the random point from the nearest node and create a new node
             #xnew = self.optimize(self.nodesList,xnew)
+            print('Here?')
             [goalbool, goalpath] = self.checkgoal(self.nodesList, xnew, self.goal)  #check the new node to see if it's in the goal zone
             if (goalbool):
                 [xg, yg, tg, zg, sg,cg] = list(zip(*goalpath))     #If it does succeed, stop creating new nodes and return the goal path
@@ -406,6 +420,7 @@ class rrt():
                 self.nodesList.append(xnew)
             if verbose: #debug info, only dump if verbose
                 print(k)
+            print('Here?')
         print('where do we go now')
         if plotting == True:# Plot if that's enabled
 
