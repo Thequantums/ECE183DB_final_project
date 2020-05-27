@@ -40,6 +40,15 @@ def send(code):
     elif code == "Request":
         message = bytes("Hawk Request Hippo 1", 'utf-8')
         emitter.send(message)
+    elif code == "Abort":
+        message = bytes("All Abort", 'utf-8')
+        emitter.send(message)
+    elif code == "Go":
+        message = bytes("All Go", 'utf-8')
+        emitter.send(message)
+    else:
+        message = bytes(message)
+        emitter.send(message)
     return 1
 
 def get_goal_state(corners, fov):
@@ -279,6 +288,7 @@ while robot.step(timestep) != -1 and killswitch != 1:
         hover_mode = True
         if not start_sent:
             send("Start_up")
+            start_sent = True
     else:
         hover_mode = False
 
@@ -336,7 +346,29 @@ while robot.step(timestep) != -1 and killswitch != 1:
         print("made it3")
         print(pathHD)
         print(pathHP)
+        if pathHP != []:
+            for x in pathHD:
+                for y in x[3]:
+                    message = "Hound 0 Path " + str(y[0]) + " " + str(y[1]) + " " + str(y[2])
+                    send(message)
+            send("Hound 0 Cap Done")
+        
+        if pathHP != []:
+            for x in pathHP:
+                for y in x[3]:
+                    message = "Hippo 0 Path " + str(y[0]) + " " + str(y[1]) + " " + str(y[2]) + " " + str(y[3]) + " " + str(y[4])
+                    send(message)
+            send("Hippo 0 Cap Done")
+        
+        if pathHD != [] and pathHP != []:
+            send("Go")
+        else:
+            send("Abort")
         request = False
+        for x in hound_request:
+            x = False
+        for x in hippo_request:
+            x= False
         if False:
             # COLLISION AVOIDANCE CODE
             # Trajectories for Hound
