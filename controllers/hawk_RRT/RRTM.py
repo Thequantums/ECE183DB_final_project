@@ -8,7 +8,7 @@ class rrt():
 
 
     def __init__(self, origin = [250, 0, 0, 0,'',0], maxcoords = [500,500], stepsize = 5, N = 10000, obstacles = [[0, 0, 100, 500], [400, 0, 500, 500], [200, 300, 400, 325],
-                     [100, 350, 250, 375]], goal = [140, 400, 150, 410], obstacletype = 'vertex', live = False, divis = 1,scale = 10):
+                     [100, 350, 250, 375]], goal = [140, 400, 150, 410], obstacletype = 'vertex', live = False, divis = 1):
         self.origin = origin  # Origin point, in form x,y,parent
         self.maxcoords = maxcoords  # Max values of field. x,y form. Assumes bottom left is 0,0
         self.N = N  # Iterations to run
@@ -16,11 +16,11 @@ class rrt():
         # scaled up by the scale variable, in order to make the system sufficiently continuous. Rectangles only, in form xmin, ymin, xmax, ymax
         self.goal = goal  # goal. Rectangles only, in form xmin, ymin, xmax, ymax
         self.nodesList = [origin]  # list of all nodes
-        self.robotRadius = 5*scale    #Radius of the circular robot estimate
+
         self.obstacletype = obstacletype    #Whether we're using the vertex obstacle type (manual entry) or the array type (import from obstacleFinder)
         self.live = live    #Whether we're using the "live" plotter or the end-time plotter
         self.divis = divis #draw every divis changes
-        self.scale = scale  #scale-up constant for graph
+
         self.sweetener = 100 #determines how often to push the tree towards the goal state. EG a value of 100 means it sets the random point to the goal
         #every 100 iterations
         if self.live:   #Turns on interactive plotting if in live mode
@@ -419,10 +419,10 @@ class rrt():
                  plt.ioff()
             plt.show()
 
-            xg = (np.array(xg) / self.scale).tolist()   #scale trajectory down from increased scale
-            yg = (np.array(yg) / self.scale).tolist()
-            trajectory = []
-            for i in range(0,len(xg)):
-                trajectory.append([xg[i],yg[i],tg[i],sg[i]])
+        xg = (np.array(xg)).tolist()   #scale trajectory down from increased scale
+        yg = (np.array(yg)).tolist()
+        trajectory = []
+        for i in range(0,len(xg)):
+            trajectory.append([xg[i],yg[i],tg[i],sg[i]])
 
         return trajectory[::-1] #return the trajectory to the goal (reverse it, its in goal -> origin order until this line
