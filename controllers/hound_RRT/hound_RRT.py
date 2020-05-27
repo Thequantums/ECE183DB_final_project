@@ -20,7 +20,7 @@ def process(message):
         return 0
     if message[2] == "Path":
         instruction = []
-        for x in range(2,5):
+        for x in range(3,6):
             instruction.append(float(message[x]))
         path.append(instruction)
         return 0
@@ -170,7 +170,9 @@ while robot.step(TIME_STEP) != -1:
     # This section is to handle paths, this simply consumes instructions and moves along the instruction list
     # Stopping when it hits the done cap.
     elif path_mode:
+        print('path')
         current = path[index]
+        print(current)
         if type(current) == str:
             # Change State and refresh variables for next time
             path_mode = False

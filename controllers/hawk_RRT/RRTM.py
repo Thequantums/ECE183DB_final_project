@@ -21,7 +21,7 @@ class rrt():
         self.live = live    #Whether we're using the "live" plotter or the end-time plotter
         self.divis = divis #draw every divis changes
 
-        self.sweetener = 100 #determines how often to push the tree towards the goal state. EG a value of 100 means it sets the random point to the goal
+        self.sweetener = 25 #determines how often to push the tree towards the goal state. EG a value of 100 means it sets the random point to the goal
         #every 100 iterations
         if self.live:   #Turns on interactive plotting if in live mode
             plt.ion()
@@ -105,7 +105,7 @@ class rrt():
         instructionVector = []  #vector for instructions
         # Full spin and Full velocity
         theta_dot = 3.039003906
-        V = .5*10
+        V = .5*100
         currentPos = [startnode[0],startnode[1],startnode[2],self.nodesList.index(startnode),'',0]  #initialize currentPosition to startPosition
         prevPos = currentPos    #initialize prevPos to currentPos
         theta_path = math.atan2(targetnode[1] - startnode[1], targetnode[0] - startnode[0]) #calculate theta_path for the given two points
@@ -164,9 +164,9 @@ class rrt():
                     stage1 = False
                     t = t - 1 # This was a decision and not a step so draw t back by one
                     if path_right:
-                        instructionVector.append([4, -4, counter])
+                        instructionVector.append([-3, 3, counter])
                     else:
-                        instructionVector.append([-4, 4, counter])
+                        instructionVector.append([3, -3, counter])
                     counter = 0
                     instructionVector.append([0, 0, 25])
                 else:
@@ -184,7 +184,7 @@ class rrt():
                     stage3 = True
                     stage2 = False
                     t = t - 1
-                    instructionVector.append([20, 20, counter])
+                    instructionVector.append([10, 10, counter])
                     counter = 0
                     instructionVector.append([0, 0, 15])
                 else:
@@ -211,18 +211,18 @@ class rrt():
         # This if ladder catches final instructions since loop will terminate mid instruction
         if stage3:
             if final_right:
-                instructionVector.append([4, -4, counter])
+                instructionVector.append([-3, 3, counter])
             else:
-                instructionVector.append([-4, 4, counter])
+                instructionVector.append([3, -3, counter])
             instructionVector.append([0, 0, 25])
         elif stage2:
-            instructionVector.append([20, 20, counter])
+            instructionVector.append([10, 10, counter])
             instructionVector.append([0, 0, 15])
         elif stage1:
             if path_right:
-                instructionVector.append([4, -4, counter])
+                instructionVector.append([-3, 3, counter])
             else:
-                instructionVector.append([-4, 4, counter])
+                instructionVector.append([3, -3, counter])
             instructionVector.append([0, 0, 25])
 
         # Setup for return and return
