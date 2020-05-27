@@ -7,22 +7,25 @@ def process(message):
     message = message.decode('utf-8')
     print(message)
     message = message.split()
-    if (message[0] != "Hound" or message[1] != "1") and message[0] != "All":
+    if (message[0] != "Hound" or message[1] != "0") and message[0] != "All":
         return 0
     if message[1] == "Startup":
         return -1
-    if message[1] == "Path":
+    if message[1] == "Abort":
+        print("FOOBAR!")
+        return 0
+    if message[1] == "Go":
+        return 1
+    if message[1] == "Stall":
+        return 0
+    if message[2] == "Path":
         instruction = []
         for x in range(2,5):
             instruction.append(float(message[x]))
         path.append(instruction)
         return 0
-    if message[1] == "Cap":
+    if message[2] == "Cap":
         path.append(message[2])
-        return 0
-    if message[1] == "Go":
-        return 1
-    if message[1] == "Stall":
         return 0
         # Code for recieving stall news, should return some other positive number
     return 0 # Defualt don't do anything for other messages
