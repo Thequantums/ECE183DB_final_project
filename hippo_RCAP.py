@@ -276,14 +276,10 @@ receive_reply = True
 my_turn = False
 
 lock = threading.Lock()
-my_id = 1
+my_id = 1 #hippo id is 1
 my_radius = 0.6
 hound_radius = 0.6
 
-my_waiting_state = 1 #0 for transitioning state
-knowing_other_is_stalled = 0 # 1 if i know other my_waiting_state = 1
-hound_arrived_at_a_node = 0
-agreement = 0
 R2_location = []
 
 hound_block_state = False
@@ -292,7 +288,7 @@ fall_back = False
 
 hound_arrived = False
 
-execute_fall_back = False
+execute_fall_back = False #true after fall back successfully
  
 class Collision_avoidance:
 
@@ -318,39 +314,6 @@ class Collision_avoidance:
 	def convert_string_to_bin(self,string_):
 		return bytes(string_,'utf-8')
 
-
-	#This function is to run in parallel with the execute main. It keeps listenning for sending from other robots and invoke handlers coorespondingly
-	#Using lock to lock some shared variables between the threads
-	#*****Import Note about communication******: Even with the same channel number, each robot has their own seperate queue. They dont share the same channel.
-
-	def reply(self, type, sender_id):
-		if type == "q_state":
-			st = sender_id + ' ' + 'q_state_ans'  + ' ' + str(my_waiting_state) + ' ' + str(knowing_other_is_stalled) + ' ' + str(my_id)
-		if type == "q_path":
-			current_state = self.get_state()
-			if current_state == (len(my_trajectory) - 1):
-				#if the current_state is the goal state
-				current_x, current_y, next_x, next_y = my_trajectory[current_state][0], my_trajectory[current_state][1],my_trajectory[current_state][0],my_trajectory[current_state][1]
-			else:
-				current_x, current_y, next_x, next_y = my_trajectory[current_state][0], my_trajectory[current_state][1], my_trajectory[current_state+1][0], my_trajectory[current_state+1][1]
-			st = sender_id + ' ' + 'q_path_ans' + ' ' + str(current_x) + ' ' + str(current_y) + ' ' + str(next_x) + ' ' + str(next_y) + ' ' + str(my_id)
-		print("hound replies back: ", st)
-		st = self.convert_string_to_bin(st)
-		emit.send(st)
-
-
-	def reply_handler(self, data):
-		global reply_R2_state, receive_reply, reply_R2_info
-		if data[0] == "q_state_ans":
-			lock.acquire()
-			reply_R2_state = [int(data[1]), int(data[2])]
-			receive_reply = True
-			lock.release()
-		if data[0] == "q_path_ans":
-			lock.acquire()
-			reply_R2_info = [float(data[1]), float(data[2]), float(data[3]), float(data[4])]
-			receive_reply = True
-			lock.release()
 
 	def location_handler(self,sender_id):
 		st = sender_id + ' ' + 'location_anw'  + ' ' + str(my_trajectory[self.get_state()][0]) + ' ' + str(my_trajectory[self.get_state()][1])
@@ -421,18 +384,15 @@ class Collision_avoidance:
 	#This function only return after the car has reached the specified node.
 	def goto_target(self,i):
 		#drive to the target node in the my_trajectory
-		global my_waiting_state
 		i = int(i)
 		finish_one_drive = True
 		print("hippo is driving to: ", i)
 		goto_x, goto_y = my_trajectory[i][0], my_trajectory[i][1]
-		my_waiting_state = 0 #i'm going out
 		while robot.step(timestep) != -1:
 			if base_goto_reached() == False or finish_one_drive == True:
 				base_run(goto_x, goto_y, 1)
 				finish_one_drive = False
 			else:
-				my_waiting_state = 1 #arrived, switch to stalled state
 				if i == (len(my_trajectory) - 1):
 					self.send_i_arrived()
 				print("hippo is arriving at state: ", i)
@@ -441,8 +401,7 @@ class Collision_avoidance:
 				
 
 	#parse the string trajectory to real trajectory
-	#each node has the form of [current_x, current_y, parent_x, parent_y, type_a, type_b, type_c]
-	#typea and typeb and typec has the form as [[x,y], [x1,y1], [x2,y2],...]
+	#each node has the form of [current_x, current_y]
 	def str_traj_2_reaL_traj(self,trajectory):
 		real_traj = []
 		trajectory = trajectory[1:]
@@ -460,55 +419,7 @@ class Collision_avoidance:
 				node.append(float(trajectory[i]))
 				i = i + 1
 		return real_traj
-
-
-	def quary_state(self):
-		global receive_reply, reply_R2_state, knowing_other_is_stalled
-		quary = "1 q_state 2" #1 is hippo id, q_state is question type, 2 is my id
-		bin_data = self.convert_string_to_bin(quary)
-		receive_reply = False
-		emit.send(bin_data)
-		while robot.step(timestep) != -1:
-			print("hound stuck here")
-			if receive_reply == True:
-				break
-		if reply_R2_state[0] == 1:
-			knowing_other_is_stalled = 1
-		else:
-			knowing_other_is_stalled = 0
-		temp_reply = reply_R2_state
-		reply_R2_state = []
-		return temp_reply
 	
-	def quary_path(self):
-		global receive_reply, reply_R2_info
-		quary = "1 q_path 2" #1 is hippo id, q_state is question type, 2 is my id
-		bin_data = self.convert_string_to_bin(quary)
-		receive_reply = False
-		emit.send(bin_data)
-		while robot.step(timestep) != -1:
-			if receive_reply == True:
-				break
-		temp_reply = reply_R2_info
-		reply_R2_info = []
-		return temp_reply
-
-	def check_two_path_overlaps(self,R2_path):
-		i = self.get_state()
-		if i == (len(my_trajectory) -1):
-			#i am at goal node
-			my_p1, my_p2 = cg.Point(my_trajectory[i][0],my_trajectory[i][1]), cg.Point(my_trajectory[i][0],my_trajectory[i][1])
-		else:
-			my_p1, my_p2 = cg.Point(my_trajectory[i][0],my_trajectory[i][1]), cg.Point(my_trajectory[i+1][0],my_trajectory[i+1][1])
-		R2_p1, R2_p2 = cg.Point(R2_path[0], R2_path[1]), cg.Point(R2_path[2],R2_path[3])
-		
-		return cg.check_if_two_path_overlaps(my_p1, my_p2, my_radius, R2_p1, R2_p2, hound_radius)
-	
-	def send_agreement(self):
-		st = "2 ready 2"
-		st = self.convert_string_to_bin(st)
-		emit.send(st)
-
 	def send_your_turn_message(self):
 		global my_turn
 		my_turn = False
@@ -601,10 +512,7 @@ class Collision_avoidance:
 										execute_fall_back = False
 										self.fall_back_success()
 								else:
-									while robot.step(timestep) != -1:
-										if fall_back == True:
-											fall_back = False
-											break
+									pass
 				else:
 					pass
 					#print("Hippo has arrived at goal node")
@@ -638,3 +546,4 @@ th.run()
     #  motor.setPosition(10.0)
 
 # Enter here exit cleanup code.
+
