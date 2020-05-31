@@ -1,6 +1,9 @@
 #!/usr/bin/python3
 import math
 
+
+safe_const = 0.2
+
 class Point:
     def __init__(self, x, y):
         self.x = x
@@ -247,6 +250,48 @@ def check_robot_is_moving(p1,p2,radius1,center,radius2):
     #clic(B,C,center,radius2)
     return intersect(center,radius2, A,B,C,D,p1,p2)
 
+def check_path(p1,p2,r1,center,r2):
+	if check_robot_is_moving(p1,p2,r1,center,r2):
+		return True
+	if check_two_circles_intersect(p1,r1,center,r2):
+		return True
+	if check_two_circles_intersect(p2,r1,center,r2):
+		return True	
+	return False
+
+
+def colliding_zone(p1,p2,r1,p3,p4,r2):
+	d = math.sqrt( pow(p3.x - p4.x,2) + pow(p3.y - p4.y,2))
+	d = d + 2 * r2
+	r1 = r1 + d + safe_const
+	return check_path(p1,p2,r1,p3,r2)
+	
+	
+def check_if_two_path_overlaps(p1,p2,r1,p3,p4,r2):
+	#get rectangles points for robot r1
+	A1,B1,C1,D1 = get_rectangle_points(p1,p2,r1)
+	A2, B2, C2, D2 = get_rectangle_points(p3,p4,r2)
+	
+	if check_two_circles_intersect(p1,r1,p3,r2):
+		return True
+	if intersect(p1,r1,A2,B2,C2,D2,p3,p4):
+		return True
+	if check_two_circles_intersect(p1,r1,p4,r2):
+		return True
+	if intersect(p3,r2,A1,B1,C1,D1,p1,p2):
+		return True
+	if doIntersect(p1,p2,p3,p4):
+		return True
+	if intersect(p4,r2,A1,B1,C1,D1,p1,p2):
+		return True
+	if check_two_circles_intersect(p2,r1,p3,r2):
+		return True
+	if intersect(p2,r1,A2,B2,C2,D2,p3,p4):
+		return True
+	if check_two_circles_intersect(p2,r1,p4,r2):
+		return True
+	return False
+	
 #if __name__ == '__main__':
 #    A,B,C,D = get_rectangle_points(Point(-1,-1),Point(-4,-2),0.5)
 #    if isinsiderect(Point(-1,-1),Point(1,5),A,B,C,D,Point(1,4)):
