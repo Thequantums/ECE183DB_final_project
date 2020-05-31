@@ -7,7 +7,7 @@ import math
 import numpy as np
 import collision_geometry as cg
         
-#========================hippopy_code, code for driving================================================
+#========================hippopy_code, code for driving, dont have to read this================================================
 
 #plateform_speed is the speed of the body in m/s for SPEED define as 4.0 bellow
 SPEED = 4.0
@@ -228,7 +228,7 @@ def base_run(x,z,alpha):
 	base_goto_straight_to_direction(init_node.x , init_node.z, x, z)
 	
 
-#==========================End_code for Driving============================================================
+#==========================End_code for Driving function============================================================
 
 
 # create the Robot instance.
@@ -242,7 +242,7 @@ commu_channel = 1
 
 # Main loop:
 # - perform simulation steps until Webots is stopping the controller
-file = open("my_file.txt","w")
+file = open("my_file.txt","w") #open file so the console outputs print statement.
 emit = robot.getEmitter("emitter")
 receive = robot.getReceiver("receiver")
 receive.enable(timestep)
@@ -253,53 +253,43 @@ emit.setChannel(commu_channel)
 import threading
 
 #my_trajectory has a list of nodes.
-#each node is a list as [x,y,parent_node.x,parent_node.y,type A, type B, type C]
-#type A or B or C has a form [[x,y],[x1,y1],[x2,y2],[x3,y3],...]
+#each node is a list as [x,y]
 
-#three types of conflict nodes, A,B,C
-#Type A: attemp_to_go_conflict_node (Crossing path) (list)
-#Type B: driving conflict node (list)
-#Type C: arriving conflict node (list)
-
-#All robot id list, now we have two robots. Hound's ID is 2. Hippo's ID is 1
 
 my_state = 0 #starting node is always 0
-my_trajectory = []
+my_trajectory = [] #the whole trajectory for hound, contains nodes, each node is a list of [x,z]
 receiv_traj_flag = True #set it true so the robot is waiting to receive its trajecotry
 
-me = "22" #code for receiving hound trajectory
-priority_id = "hound"
-reply_R2_info = [] #for path quary
-reply_R2_state = [] #for state quary
-receive_reply = True
+me = "22" #code for receiving hound trajectory from hawk (used in communication),  '11' for hippo
+priority_id = "hound" #hounds get to send command to hippo to fall back once deadlock occurs
 
-my_turn = False
+receive_reply = True #true after hound receives reply (hippo's current node) back from hippo 
+
+my_turn = False #turn once at time 
 
 lock = threading.Lock()
-my_id = 2
-my_radius = 0.6
+my_id = 2 #hound id is 2, hippo id is 1
+my_radius = 0.6 #radius in meter
 hippo_radius = 0.6
 
-my_waiting_state = 1 #0 for transitioning state
-knowing_other_is_stalled = 0 # 1 if i know other my_waiting_state = 1
-hound_arrived_at_a_node = 0
-agreement = 0
-R2_location = []
+R2_location = [] #a [x,y] for where the hippo is currently staying
 
-hippo_arrived = False
-hound_block_state = False
-hippo_block_state = False
-fall_back = False
+hippo_arrived = False #flag when receives hippo arrived at it goal node
+hound_block_state = False #flag when hound is blocked and cant go, so hound passes command to hippo
+hippo_block_state = False #flag when hippo is blocked and cant go, so hippo passes command to hound
+fall_back = False #is true when hippo has successfully fall back
  
 class Collision_avoidance:
 
+	#return current node
 	def get_state(self):
 		global my_state
 		lock.acquire()
 		mstate = my_state
 		lock.release()
 		return mstate
-		
+	
+	#change the current node
 	def set_state(self,index):
 		global my_state
 		lock.acquire()
@@ -315,49 +305,17 @@ class Collision_avoidance:
 	def convert_string_to_bin(self,string_):
 		return bytes(string_,'utf-8')
 
-
-	#This function is to run in parallel with the execute main. It keeps listenning for sending from other robots and invoke handlers coorespondingly
-	#Using lock to lock some shared variables between the threads
-	#*****Import Note about communication******: Even with the same channel number, each robot has their own seperate queue. They dont share the same channel.
-
-	def reply(self, type, sender_id):
-		if type == "q_state":
-			st = sender_id + ' ' + 'q_state_ans'  + ' ' + str(my_waiting_state) + ' ' + str(knowing_other_is_stalled) + ' ' + str(my_id)
-		if type == "q_path":
-			current_state = self.get_state()
-			if current_state == (len(my_trajectory) - 1):
-				#if the current_state is the goal state
-				current_x, current_y, next_x, next_y = my_trajectory[current_state][0], my_trajectory[current_state][1],my_trajectory[current_state][0],my_trajectory[current_state][1]
-			else:
-				current_x, current_y, next_x, next_y = my_trajectory[current_state][0], my_trajectory[current_state][1], my_trajectory[current_state+1][0], my_trajectory[current_state+1][1]
-			st = sender_id + ' ' + 'q_path_ans' + ' ' + str(current_x) + ' ' + str(current_y) + ' ' + str(next_x) + ' ' + str(next_y) + ' ' + str(my_id)
-		print("hound replies back: ", st)
-		st = self.convert_string_to_bin(st)
-		emit.send(st)
-
-
-	def reply_handler(self, data):
-		global reply_R2_state, receive_reply, reply_R2_info
-		if data[0] == "q_state_ans":
-			lock.acquire()
-			reply_R2_state = [int(data[1]), int(data[2])]
-			receive_reply = True
-			lock.release()
-		if data[0] == "q_path_ans":
-			lock.acquire()
-			reply_R2_info = [float(data[1]), float(data[2]), float(data[3]), float(data[4])]
-			receive_reply = True
-			lock.release()
-
+	#repply to hippo back when receives quary about location
 	def location_handler(self,sender_id):
 		st = sender_id + ' ' + 'location_anw'  + ' ' + str(my_trajectory[self.get_state()][0]) + ' ' + str(my_trajectory[self.get_state()][1])
 		st = self.convert_string_to_bin(st)
 		emit.send(st)
-		
+	
+	#This function is run in parrallel with the exectute_main function. This is to receives reply from hippo and reply back to hippo 
 	def listen(self):
 		global my_trajectory, receiv_traj_flag, agreement, my_turn, R2_location, receive_reply, hippo_block_state, fall_back, hippo_arrived
 		while robot.step(timestep) != -1:
-			#receiving trajecotry from hawk, only once time
+			#receiving trajecotry from hawk, only once time,
 			if receiv_traj_flag:
 				while(receive.getQueueLength() > 0):
 					bin_data = receive.getData()
@@ -382,29 +340,36 @@ class Collision_avoidance:
 					if float(str_list[0]) == my_id:
 						str_list = str_list[1:] #strip my_id field off
 						if str_list[0] == "urturn":
+							#receive message for me to drive
 							if self.get_state() != len(my_trajectory) - 1:
 								print("hippo receive my_turn")
 							my_turn = True
 							receive.nextPacket() #remove the packet from communication channel
 						elif str_list[0] == "location":
+							#receive quary from hippo about my current location
 							self.location_handler(str_list[1])
 							receive.nextPacket() #remove the packet from communication channel
 						elif str_list[0] == "location_anw":
+							#receive reply back from hippo about it currrent location
 							R2_location = [float(str_list[1]), float(str_list[2])]
 							receive_reply = True
 							receive.nextPacket() #remove the packet from communication channel
 						elif str_list[0] == "blocked":
+							#receive messagee that hippo is blocked and cant go
 							hippo_block_state = True
 							print("hippo is blocked")
 							receive.nextPacket() #remove the packet from communication channel
 						elif str_list[0] == "unblocked":
+							#receive message that hippo is no longer blcoked
 							hippo_block_state = False
 							receive.nextPacket()
 						elif str_list[0] == "arrived":
+							#receive messages that hippo has arrived its goal node
 							print("hound receives hippo arrived")
 							hippo_arrived = True
 							receive.nextPacket()	
 						elif str_list[0] == "fall":
+							#receives message that hippo has successfully fall back
 							print("hound receives fall back")
 							fall_back = True
 							receive.nextPacket()
@@ -419,18 +384,15 @@ class Collision_avoidance:
 	#This function only return after the car has reached the specified node.
 	def goto_target(self,i):
 		#drive to the target node in the my_trajectory
-		global my_waiting_state
 		i = int(i)
 		finish_one_drive = True
 		print("hound is driving to: ", i)
 		goto_x, goto_y = my_trajectory[i][0], my_trajectory[i][1]
-		my_waiting_state = 0 #i'm going out
 		while robot.step(timestep) != -1:
 			if base_goto_reached() == False or finish_one_drive == True:
 				base_run(goto_x, goto_y, 1)
 				finish_one_drive = False
 			else:
-				my_waiting_state = 1 #arrived, switch to stalled state
 				if i == (len(my_trajectory) - 1):
 					self.send_i_arrived()
 				print("hound is arriving at state: ", i)
@@ -439,8 +401,7 @@ class Collision_avoidance:
 				
 
 	#parse the string trajectory to real trajectory
-	#each node has the form of [current_x, current_y, parent_x, parent_y, type_a, type_b, type_c]
-	#typea and typeb and typec has the form as [[x,y], [x1,y1], [x2,y2],...]
+	#each node has the form of [current_x, current_y,]
 	def str_traj_2_reaL_traj(self,trajectory):
 		real_traj = []
 		trajectory = trajectory[1:]
@@ -459,54 +420,7 @@ class Collision_avoidance:
 				i = i + 1
 		return real_traj
 
-
-	def quary_state(self):
-		global receive_reply, reply_R2_state, knowing_other_is_stalled
-		quary = "1 q_state 2" #1 is hippo id, q_state is question type, 2 is my id
-		bin_data = self.convert_string_to_bin(quary)
-		receive_reply = False
-		emit.send(bin_data)
-		while robot.step(timestep) != -1:
-			print("hound stuck here")
-			if receive_reply == True:
-				break
-		if reply_R2_state[0] == 1:
-			knowing_other_is_stalled = 1
-		else:
-			knowing_other_is_stalled = 0
-		temp_reply = reply_R2_state
-		reply_R2_state = []
-		return temp_reply
-	
-	def quary_path(self):
-		global receive_reply, reply_R2_info
-		quary = "1 q_path 2" #1 is hippo id, q_state is question type, 2 is my id
-		bin_data = self.convert_string_to_bin(quary)
-		receive_reply = False
-		emit.send(bin_data)
-		while robot.step(timestep) != -1:
-			if receive_reply == True:
-				break
-		temp_reply = reply_R2_info
-		reply_R2_info = []
-		return temp_reply
-
-	def check_two_path_overlaps(self,R2_path):
-		i = self.get_state()
-		if i == (len(my_trajectory) -1):
-			#i am at goal node
-			my_p1, my_p2 = cg.Point(my_trajectory[i][0],my_trajectory[i][1]), cg.Point(my_trajectory[i][0],my_trajectory[i][1])
-		else:
-			my_p1, my_p2 = cg.Point(my_trajectory[i][0],my_trajectory[i][1]), cg.Point(my_trajectory[i+1][0],my_trajectory[i+1][1])
-		R2_p1, R2_p2 = cg.Point(R2_path[0], R2_path[1]), cg.Point(R2_path[2],R2_path[3])
-		
-		return cg.check_if_two_path_overlaps(my_p1, my_p2, my_radius, R2_p1, R2_p2, hippo_radius)
-	
-	def send_agreement(self):
-		st = "1 ready 2"
-		st = self.convert_string_to_bin(st)
-		emit.send(st)
-
+	#seding message for hippo to go
 	def send_your_turn_message(self):
 		global my_turn
 		my_turn = False
@@ -514,6 +428,7 @@ class Collision_avoidance:
 		st = self.convert_string_to_bin(st)
 		emit.send(st)		
 
+	#sending message asking where hippo is, this function waits till listen() receives reply back from hippo. Then it returns the location
 	def quary_location(self):
 		global R2_location, receive_reply
 		st = "1 location 2"
@@ -528,33 +443,32 @@ class Collision_avoidance:
 		R2_location = []
 		return temp_reply		
 
+	#return true if hippo blocked my way
 	def path_has_obstacle(self,R2_info):
 		i = self.get_state()
 		my_current, my_next = cg.Point(my_trajectory[i][0],my_trajectory[i][1]), cg.Point(my_trajectory[i+1][0],my_trajectory[i+1][1])
 		R2_current = cg.Point(R2_info[0],R2_info[1])
 		return cg.check_path(my_current, my_next, my_radius, R2_current, hippo_radius)
 
+	#send message to hippo that hippo blocks my way
 	def send_iamblocked(self):
 		st = "1 blocked 2"
 		st = self.convert_string_to_bin(st)
 		emit.send(st)			
 	
-	def fall_back_success(self):
-		st = "1 fall 2"
-		st = self.convert_string_to_bin(st)
-		emit.send(st)		
-	
+	#send message to hippo that hippo no longer blcoks my way
 	def send_iam_unblocked(self):
 		st = "1 unblocked 2"
 		st = self.convert_string_to_bin(st)
 		emit.send(st)
 	
+	#send message to hippo to fall back during deadlock scenario
 	def send_fall_back_command(self):
 		st = "1 fall 2"
 		st = self.convert_string_to_bin(st)
 		emit.send(st)
 		
-	
+	#send message to hippo that i arrived at my goal node
 	def send_i_arrived(self):
 		st = "1 arrived 2"
 		st = self.convert_string_to_bin(st)
@@ -580,11 +494,13 @@ class Collision_avoidance:
 						if hippo_arrived == True:
 							self.goto_target(self.get_state()+1)
 						elif my_turn == True:
+							#if it is my turn to go, check where hippo is 
 							R2_info = self.quary_location()
 							if self.path_has_obstacle(R2_info):
 								hound_block_state = True
 								print("hound is blokced")
 								if just_fall_back == False:
+									#if hippo just fall back, and i'm still blocked then dont give hippo turn.
 									self.send_your_turn_message()
 								self.send_iamblocked()
 							else:
@@ -595,22 +511,16 @@ class Collision_avoidance:
 						else:
 							if hound_block_state == True and (hippo_block_state == True or just_fall_back == True):
 								print("hound is facing deadlock")
-								if priority_id == "hippo":
-									#fall back
-									if self.get_state() - 1 >= 0:
-										self.goto_target(self.get_state() - 1)
-										self.send_your_turn_message()
-										self.fall_back_success()
-								else:
-									self.send_fall_back_command()
-									just_fall_back = False
-									while robot.step(timestep) != -1:
-										print("hound is waiting for hippo to finish fall back")
-										if fall_back or hippo_block_state == False:
-											print ("hound break loop fall back")
-											just_fall_back = True
-											fall_back = False
-											break
+								self.send_fall_back_command()
+								just_fall_back = False
+								#wait in loop till hippo fall back successfully
+								while robot.step(timestep) != -1:
+									print("hound is waiting for hippo to finish fall back")
+									if fall_back or hippo_block_state == False:
+										print ("hound break loop fall back")
+										just_fall_back = True
+										fall_back = False
+										break
 				else:
 					pass
 					#print("Hound has arrived at goal node")
@@ -624,7 +534,7 @@ class Collision_avoidance:
 		t2.join()
 
 th = Collision_avoidance()
-th.run()
+th.run() #run the two threads in parallel
 
 #======================================================end-collision===================================================	
     
@@ -644,3 +554,4 @@ th.run()
     #  motor.setPosition(10.0)
 
 # Enter here exit cleanup code.
+
