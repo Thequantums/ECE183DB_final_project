@@ -20,12 +20,12 @@ def process(message):
         return 0
     if message[2] == "Path":
         instruction = []
-        for x in range(2,7):
+        for x in range(3,8):
             instruction.append(float(message[x]))
         path.append(instruction)
         return 0
     if message[2] == "Cap":
-        path.append(message[2])
+        path.append(message[3])
         return 0
         # Code for recieving stall news, should return some other positive number
     return 0 # Defualt don't do anything for other messages
