@@ -25,7 +25,7 @@ def process(message):
         path.append(instruction)
         return 0
     if message[2] == "Cap":
-        path.append(message[2])
+        path.append(message[3])
         return 0
         # Code for recieving stall news, should return some other positive number
     return 0 # Defualt don't do anything for other messages
@@ -170,9 +170,7 @@ while robot.step(TIME_STEP) != -1:
     # This section is to handle paths, this simply consumes instructions and moves along the instruction list
     # Stopping when it hits the done cap.
     elif path_mode:
-        print('path')
         current = path[index]
-        print(current)
         if type(current) == str:
             # Change State and refresh variables for next time
             path_mode = False
