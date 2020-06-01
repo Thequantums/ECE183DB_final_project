@@ -32,10 +32,11 @@ class rrt():
         return dist
 
     def finddist(self,node1, node2, typec):  # returns the euclidian distance between two nodes
+        coe = 1
         if typec == 'HOUND':
-            Vmax = .5 *10#Max distance for one second movement
+            Vmax = .5 *210#Max distance for one second movement
             delta_max = 3.039003906 #max radians for one second rotation
-            theta_path = math.atan2(node2[1] - node1[1], node2[0] - node1[0])
+            theta_path = math.atan2(node2[0] - node1[0],node2[1] - node1[1])
             theta_diff1 = theta_path - node1[2]
             if theta_diff1 > math.pi:
                 theta_diff1 = theta_diff1 - 2*math.pi
@@ -51,7 +52,8 @@ class rrt():
             elif theta_diff2 <= -math.pi:
                 theta_diff2 = theta_diff2 + 2*math.pi
         else:
-            Vmax = .4 #Max distance for one second movement
+            coe = .75
+            Vmax = .4*210 #Max distance for one second movement
             delta_max = 0.596807115 #max radians for one second rotation
             theta_diff1 = 0 # Hippo has no theta one to cover so its zero
             theta_diff2 = node2[2] - node1[2]
@@ -60,11 +62,11 @@ class rrt():
             elif theta_diff2 <= -math.pi:
                 theta_diff2 = theta_diff2 + 2*math.pi
 
-        return (self.eucldist(node1, node2) / Vmax) + (theta_diff1/delta_max + theta_diff2/delta_max)
+        return (self.eucldist(node1, node2) / Vmax) + coe*(abs(theta_diff1/delta_max) + abs(theta_diff2/delta_max))
 
 
-    def randomPoint(self):  # generates a random point. Uses a larger space than the actual Configuration space in order to increase steps towards the outside of the space
-        point = [random.uniform(0, self.maxcoords[0]), random.uniform(0, self.maxcoords[1]),random.uniform(0,2*math.pi),0,'',0]
+    def randomPoint(self):  # generates a r  coords[0]), random.uniform(0, self.maxcoords[1]),random.uniform(0,2*math.pi),0,'',0]
+        point = [random.uniform(0, self.maxcoords[0]), random.uniform(0, self.maxcoords[1]),random.uniform(-math.pi,math.pi),0,'',0]
         return point
 
     def obsCheck(self, point,
@@ -105,10 +107,10 @@ class rrt():
         instructionVector = []  #vector for instructions
         # Full spin and Full velocity
         theta_dot = 3.039003906
-        V = .5*100
+        V = .5*210
         currentPos = [startnode[0],startnode[1],startnode[2],self.nodesList.index(startnode),'',0]  #initialize currentPosition to startPosition
         prevPos = currentPos    #initialize prevPos to currentPos
-        theta_path = math.atan2(targetnode[1] - startnode[1], targetnode[0] - startnode[0]) #calculate theta_path for the given two points
+        theta_path = math.atan2(targetnode[0] - startnode[0], targetnode[1] - startnode[1]) #calculate theta_path for the given two points
 
         xvel = V*math.cos(theta_path)   #calculate X and Z components of velocity
         zvel = V*math.sin(theta_path)
@@ -143,7 +145,7 @@ class rrt():
         final_diff = targetnode[2] - theta_path
         if final_diff > math.pi:
             final_diff = final_diff - 2*math.pi
-        elif theta_diff <= -math.pi:
+        elif final_diff <= -math.pi:
             final_diff = final_diff + 2*math.pi 
         final_right = True
         if (final_diff < 0):
@@ -164,9 +166,9 @@ class rrt():
                     stage1 = False
                     t = t - 1 # This was a decision and not a step so draw t back by one
                     if path_right:
-                        instructionVector.append([-3, 3, counter])
+                        instructionVector.append([4, -4, counter])
                     else:
-                        instructionVector.append([3, -3, counter])
+                        instructionVector.append([-4, 4, counter])
                     counter = 0
                     instructionVector.append([0, 0, 25])
                 else:
@@ -184,13 +186,13 @@ class rrt():
                     stage3 = True
                     stage2 = False
                     t = t - 1
-                    instructionVector.append([10, 10, counter])
+                    instructionVector.append([20, 20, counter])
                     counter = 0
                     instructionVector.append([0, 0, 15])
                 else:
                     counter = counter + 1
-                    currentPos[0] = currentPos[0] + xvel * dt
-                    currentPos[1] = currentPos[1] + zvel * dt
+                    currentPos[1] = currentPos[1] + xvel * dt
+                    currentPos[0] = currentPos[0] + zvel * dt
                
             # Stage three aligns theta for final spot     
             elif stage3:
@@ -211,18 +213,18 @@ class rrt():
         # This if ladder catches final instructions since loop will terminate mid instruction
         if stage3:
             if final_right:
-                instructionVector.append([-3, 3, counter])
+                instructionVector.append([4, -4, counter])
             else:
-                instructionVector.append([3, -3, counter])
+                instructionVector.append([-4, 4, counter])
             instructionVector.append([0, 0, 25])
         elif stage2:
-            instructionVector.append([10, 10, counter])
+            instructionVector.append([20, 20, counter])
             instructionVector.append([0, 0, 15])
         elif stage1:
             if path_right:
-                instructionVector.append([-3, 3, counter])
+                instructionVector.append([4, -4, counter])
             else:
-                instructionVector.append([3, -3, counter])
+                instructionVector.append([-4, 4, counter])
             instructionVector.append([0, 0, 25])
 
         # Setup for return and return
@@ -235,10 +237,10 @@ class rrt():
         instructionVector = []  #vector for instructions
         # Full spin and Full velocity
         theta_dot = 0.596807115
-        V = .4
+        V = .4*210
         currentPos = [startnode[0],startnode[1],startnode[2],self.nodesList.index(startnode),'',0]  #initialize currentPosition to startPosition
         prevPos = currentPos    #initialize prevPos to currentPos
-        theta_path = math.atan2(targetnode[1] - startnode[1], targetnode[0] - startnode[0]) #calculate theta_path for the given two points
+        theta_path = math.atan2(targetnode[0] - startnode[0], targetnode[1] - startnode[1]) #calculate theta_path for the given two points
 
         xvel = V*math.cos(theta_path)   #calculate X and Z components of velocity
         zvel = V*math.sin(theta_path)
@@ -261,16 +263,16 @@ class rrt():
             theta_diff = theta_diff - 2*math.pi
         elif theta_diff <= -math.pi:
             theta_diff = theta_diff + 2*math.pi
-        Vx = V*math.cos(theta_diff)
-        Vz = V*math.sin(theta_diff)
-        wheels14 = Vx - Vz
-        wheels23 = Vx + Vz   
+        Vx = V*math.cos(theta_diff)/210
+        Vz = V*math.sin(theta_diff)/210
+        wheels14 = (Vx - Vz)/.05
+        wheels23 = (Vx + Vz)/.05   
         
         # Final diff is to find out whether you should turn left or right to align theta for the final spot
         final_diff = targetnode[2] - startnode[2]
         if final_diff > math.pi:
             final_diff = final_diff - 2*math.pi
-        elif theta_diff <= -math.pi:
+        elif final_diff <= -math.pi:
             final_diff = final_diff + 2*math.pi 
         final_right = True
         if (final_diff < 0):
@@ -282,7 +284,7 @@ class rrt():
                 return prevPos      #Invalidate entire path and return start node
             
             # Stage two moves along path           
-            elif stage1:
+            if stage1:
                 if self.eucldist(currentPos,targetnode) < V*dt:
                     currentPos[0] = targetnode[0]
                     currentPos[1] = targetnode[1]
@@ -294,8 +296,8 @@ class rrt():
                     instructionVector.append([0, 0, 0, 0, 5])
                 else:
                     counter = counter + 1
-                    currentPos[0] = currentPos[0] + xvel * dt
-                    currentPos[1] = currentPos[1] + zvel * dt
+                    currentPos[0] = currentPos[0] + zvel * dt
+                    currentPos[1] = currentPos[1] + xvel * dt
                
             # Stage three aligns theta for final spot     
             elif stage2:
@@ -316,9 +318,9 @@ class rrt():
         # This if ladder catches final instructions since loop will terminate mid instruction
         if stage2:
             if final_right:
-                instructionVector.append([14, -14, 14, -14, counter])
-            else:
                 instructionVector.append([-14, 14, -14, 14, counter])
+            else:
+                instructionVector.append([14, -14, 14, -14, counter])
             instructionVector.append([0, 0, 0, 0, 5])
         elif stage1:
             instructionVector.append([wheels14, wheels23, wheels23, wheels14, counter])
@@ -388,40 +390,29 @@ class rrt():
     def rrt(self,dynamics,verbose = False, plotting = False):   #Main implementation of RRT
         xg=[]
         yg=[]
-        print('Here?')
         self.initplot(self.goal, self.obstacles)    #initialize plot
-        print('Here?')
 
         for k in range(0, self.N):      #create (or attempt to create) N nodes
-            print('Here?')
             if k % self.sweetener != 0:
                 xrand = self.randomPoint()  #choose a random point
             else:
                 xrand = self.goal
-            print('Here?')
             xnear = self.findclosest(self.nodesList, xrand, dynamics)     #find the nearest node to the random point
             #xnear = self.findclosestOPT(self.nodesList, xrand)
-            print('Here?')
             if dynamics == 'HOUND':
-                print("getting closer")
                 xnew = self.takestepHOUND(xnear, xrand, self.nodesList)  #take one step towards the random point from the nearest node and create a new node
-                print('dont read this')
             else:
                 xnew = self.takestepHIPPO(xnear, xrand,
                                           self.nodesList)  # take one step towards the random point from the nearest node and create a new node
             #xnew = self.optimize(self.nodesList,xnew)
-            print('Here?')
             [goalbool, goalpath] = self.checkgoal(self.nodesList, xnew, self.goal)  #check the new node to see if it's in the goal zone
             if (goalbool):
                 [xg, yg, tg, zg, sg,cg] = list(zip(*goalpath))     #If it does succeed, stop creating new nodes and return the goal path
-                print('PATH FOUND')
                 break
             else:   #otherwise, just add it to the list and continue
                 self.nodesList.append(xnew)
             if verbose: #debug info, only dump if verbose
                 print(k)
-            print('Here?')
-        print('where do we go now')
         if plotting == True:# Plot if that's enabled
 
             self.drawparentlines(self.nodesList)

@@ -19,7 +19,7 @@ def runRRT(dynamics, robotSize, data ,start = [0,50],end = [1950,1650]):
     #initialize RRT
     print(obs[0].shape)
     r = RRTM.rrt(N = 10000,obstacles = obs.T, obstacletype = 'array', maxcoords = obs[0].shape,
-            origin = start+[math.pi/2,0,'',0],goal = end+[0], live = False, divis = 10)
+            origin = start+[0,0,'',0],goal = end+[-math.pi/2], live = False, divis = 10)
     #Perform RRT
     trajectory = r.rrt(dynamics,plotting=True)
     #print trajectory

@@ -341,12 +341,12 @@ while robot.step(timestep) != -1 and killswitch != 1:
         data = np.array(configSpace)
         data = np.transpose(data)
         #calling to map the RRT
-        pathHD = lab3.runRRT('HOUND', [20,40], data, houndstart, [360,360])
-        pathHP = []
-        #pathHP = lab3.runRRT('HIPPO', [90,130], data, hippostart, [830,1130])
+        pathHD = lab3.runRRT('HOUND', [20,40], data, houndstart, [700,400])
+        #pathHD = []
+        pathHP = lab3.runRRT('HIPPO', [90,130], data, hippostart, [845,535])
         print("made it3")
-        print(pathHD)
-        #print(pathHP)
+        #print(pathHD)
+        print(pathHP)
         if pathHD != []:
             for x in pathHD:
                 for y in x[3]:
@@ -359,9 +359,9 @@ while robot.step(timestep) != -1 and killswitch != 1:
                 for y in x[3]:
                     message = "Hippo 0 Path " + str(y[0]) + " " + str(y[1]) + " " + str(y[2]) + " " + str(y[3]) + " " + str(y[4])
                     send(message)
-            send("Hippo 0 Cap Done")
+            send("Hippo 0 Cap Push")
         
-        if pathHD != []: #and pathHP != []:
+        if pathHD != [] and pathHP != []:
             send("Go")
         else:
             send("Abort")
