@@ -179,6 +179,11 @@ hippo_done = [False]
 houndstart = [0,0]
 hippostart = [0,0]
 
+pathReady = True
+goalListHP = [[845,535],[854, 835]]
+goalListHD = [[700,400],[569, 835]]
+goalIndex = 0
+
 start_sent = False
 
 # Main loop:
@@ -217,10 +222,9 @@ while robot.step(timestep) != -1 and killswitch != 1:
                 target_x = rende[0]
                 target_z = rende[1]
         receiver.nextPacket()
-    
     if done and x_good and z_good:
         target_altitude = 1    
-    
+
 
     roll = imu.getRollPitchYaw()[0] + (math.pi / 2.0)
     pitch = imu.getRollPitchYaw()[1]
@@ -341,9 +345,10 @@ while robot.step(timestep) != -1 and killswitch != 1:
         data = np.array(configSpace)
         data = np.transpose(data)
         #calling to map the RRT
-        pathHD = lab3.runRRT('HOUND', [20,40], data, houndstart, [700,400])
+        pathHD = lab3.runRRT('HOUND', [20,40], data, houndstart,goalListHD[goalIndex] )
         #pathHD = []
-        pathHP = lab3.runRRT('HIPPO', [96,136], data, hippostart, [845,535])
+        pathHP = lab3.runRRT('HIPPO', [96,136], data, hippostart,goalListHP[goalIndex] )
+
         print("made it3")
         #print(pathHD)
         print(pathHP)
@@ -352,7 +357,8 @@ while robot.step(timestep) != -1 and killswitch != 1:
                 for y in x[3]:
                     message = "Hound 0 Path " + str(y[0]) + " " + str(y[1]) + " " + str(y[2])
                     send(message)
-            send("Hound 0 Cap Done")
+            send("Hound 0 Cap Wait")
+
         
         if pathHP != []:
             for x in pathHP:
@@ -360,16 +366,18 @@ while robot.step(timestep) != -1 and killswitch != 1:
                     message = "Hippo 0 Path " + str(y[0]) + " " + str(y[1]) + " " + str(y[2]) + " " + str(y[3]) + " " + str(y[4])
                     send(message)
             send("Hippo 0 Cap Push")
-        
+
+
         if pathHD != [] and pathHP != []:
             send("Go")
+            goalIndex = goalIndex+1
         else:
             send("Abort")
         request = False
         for x in hound_request:
             x = False
         for x in hippo_request:
-            x= False
+            x = False
         if False:
             # COLLISION AVOIDANCE CODE
             # Trajectories for Hound

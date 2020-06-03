@@ -107,6 +107,7 @@ while robot.step(TIME_STEP) != -1:
         elif code == 1:
             path_mode = True
             wait_mode = False
+            sent_request = False
         elif code == -1:
             start_mode = False
             wait_mode = True

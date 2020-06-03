@@ -13,7 +13,7 @@ def runRRT(dynamics, robotSize, data ,start = [0,50],end = [1950,1650]):
     if dynamics == 'HOUND':
         scaleFactor = 3
     elif dynamics == 'HIPPO':
-        scaleFactor = 12
+        scaleFactor = 10
     obs = img.obsSpaceGen(robotSize, data, scaleFactor, debug=False)
     plt.imshow(data,interpolation='nearest') #show 2D representation of map
     #initialize RRT

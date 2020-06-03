@@ -434,4 +434,7 @@ houndf {
 }
 Heavy {
   translation 1.12 0.1 1.7
+  RecognitionColors [
+    1 0 0
+  ]
 }
