@@ -343,7 +343,7 @@ while robot.step(timestep) != -1 and killswitch != 1:
         #calling to map the RRT
         pathHD = lab3.runRRT('HOUND', [20,40], data, houndstart, [700,400])
         #pathHD = []
-        pathHP = lab3.runRRT('HIPPO', [90,130], data, hippostart, [845,535])
+        pathHP = lab3.runRRT('HIPPO', [96,136], data, hippostart, [845,535])
         print("made it3")
         #print(pathHD)
         print(pathHP)
