@@ -180,8 +180,9 @@ houndstart = [0,0]
 hippostart = [0,0]
 
 pathReady = True
-goalListHP = [[845,535],[854, 835]]
-goalListHD = [[700,400],[569, 835]]
+goalListHP = [[[845,535],"Hound 0 Cap Wait"],[[854, 835],"Hound 0 Cap Wait"]]
+
+goalListHD = [[[700,400],"Hippo 0 Cap Push"],[[569, 835],"Hippo 0 Cap Wait"]]
 goalIndex = 0
 
 start_sent = False
@@ -345,9 +346,9 @@ while robot.step(timestep) != -1 and killswitch != 1:
         data = np.array(configSpace)
         data = np.transpose(data)
         #calling to map the RRT
-        pathHD = lab3.runRRT('HOUND', [20,40], data, houndstart,goalListHD[goalIndex] )
+        pathHD = lab3.runRRT('HOUND', [20,40], data, houndstart,goalListHD[goalIndex][0] )
         #pathHD = []
-        pathHP = lab3.runRRT('HIPPO', [96,136], data, hippostart,goalListHP[goalIndex] )
+        pathHP = lab3.runRRT('HIPPO', [96,136], data, hippostart,goalListHP[goalIndex][0] )
 
         print("made it3")
         #print(pathHD)
@@ -357,7 +358,7 @@ while robot.step(timestep) != -1 and killswitch != 1:
                 for y in x[3]:
                     message = "Hound 0 Path " + str(y[0]) + " " + str(y[1]) + " " + str(y[2])
                     send(message)
-            send("Hound 0 Cap Wait")
+            send(goalListHD[goalIndex][1])
 
         
         if pathHP != []:
@@ -365,7 +366,7 @@ while robot.step(timestep) != -1 and killswitch != 1:
                 for y in x[3]:
                     message = "Hippo 0 Path " + str(y[0]) + " " + str(y[1]) + " " + str(y[2]) + " " + str(y[3]) + " " + str(y[4])
                     send(message)
-            send("Hippo 0 Cap Push")
+            send(goalListHP[goalIndex][1])
 
 
         if pathHD != [] and pathHP != []:
