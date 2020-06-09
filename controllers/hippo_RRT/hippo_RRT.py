@@ -5,7 +5,7 @@ from controller import Robot, Motor, Emitter, Receiver, Keyboard
 # these two elements, returns an int that represents a code as to what should be done based on message
 def process(message):
     message = message.decode('utf-8')
-    print(message)
+    #print(message)
     message = message.split()
     if (message[0] != "Hippo" or message[1] != "0") and message[0] != "All":
         return 0
@@ -115,10 +115,10 @@ while robot.step(TIME_STEP) != -1:
         code = process(message)
         if code == 0:
             pass
-        if code == 1:
+        elif code == 1:
+            sent_request = False
             path_mode = True
             wait_mode = False
-            sent_request = False
         elif code == -1:
             start_mode = False
             wait_mode = True
@@ -138,14 +138,22 @@ while robot.step(TIME_STEP) != -1:
     # Sets the velocities to zero and does not not deviate from this behaviour and will send message
     # To others that it is done (will only send this message once)0
     elif done_mode:
-        wheels[0].setVelocity(0)
-        wheels[1].setVelocity(0)
-        wheels[2].setVelocity(0)
-        wheels[3].setVelocity(0)
-        if not sent_done:
-            print("I am done")
-            sent_done = True
-            send('Done')
+        if counter < 300:
+            counter = counter + 1
+        if counter > 270:
+            wheels[0].setVelocity(0)
+            wheels[1].setVelocity(0)
+            wheels[2].setVelocity(0)
+            wheels[3].setVelocity(0)
+            if not sent_done:
+                print("I am done")
+                sent_done = True
+                send('Done')
+        else:
+            wheels[0].setVelocity(8)
+            wheels[1].setVelocity(-8)
+            wheels[2].setVelocity(-8)
+            wheels[3].setVelocity(8)
             
     # This runs the push protocol to clear buttons, this is simply sets pusher down for a second and then
     # it enters the wait mode automatically, resets necessary variables at end                
