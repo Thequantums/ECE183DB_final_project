@@ -15,8 +15,9 @@ hound_radius = 1 #should be in meter
 hippo_radius = 0.25 #should be in meter
 
 def process(message):
+    global hound_request
+    global hippo_request
     message = message.decode('utf-8')
-    print(message)
     message = message.split()
     if message[0] != "Hawk":
         return 0
@@ -179,10 +180,15 @@ hippo_done = [False]
 houndstart = [0,0]
 hippostart = [0,0]
 
-pathReady = True
-goalListHP = [[[845,535],"Hound 0 Cap Wait"],[[854, 835],"Hound 0 Cap Wait"]]
+#goalListHD = [[[600,350, math.pi],"Hound 0 Cap Wait"],[[310, 900, 0],"Hound 0 Cap Push"], [[710,1110, 0],"Hound 0 Cap Done"]]
+#startHD = [0, math.pi, 0]
+#startHP = [0, -math.pi/2, 0]
+#goalListHP = [[[845,535, -math.pi/2],"Hippo 0 Cap Push"],[[900, 835, 0],"Hippo 0 Cap Wait"], [[710,1110, 0],"Hippo 0 Cap Done"]]
 
-goalListHD = [[[700,400],"Hippo 0 Cap Push"],[[569, 835],"Hippo 0 Cap Wait"]]
+goalListHD = [[[720,1120, 0],"Hound 0 Cap Wait"],[[310, 900, 0],"Hound 0 Cap Push"], [[710,1110, 0],"Hound 0 Cap Done"]]
+startHD = [0, math.pi, 0]
+startHP = [0, -math.pi/2, 0]
+goalListHP = [[[720,1120, 0],"Hippo 0 Cap Push"],[[900, 835, 0],"Hippo 0 Cap Wait"], [[710,1110, 0],"Hippo 0 Cap Done"]]
 goalIndex = 0
 
 start_sent = False
@@ -202,9 +208,11 @@ while robot.step(timestep) != -1 and killswitch != 1:
             temp = True
             for x in hound_request:
                 if not x:
+                    print(x)
                     temp = False
             for x in hippo_request:
                 if not x:
+                    print(x)
                     temp = False
             if temp:
                 request = True       
@@ -224,6 +232,7 @@ while robot.step(timestep) != -1 and killswitch != 1:
                 target_z = rende[1]
         receiver.nextPacket()
     if done and x_good and z_good:
+        y_good = False
         target_altitude = 1    
 
 
@@ -346,9 +355,9 @@ while robot.step(timestep) != -1 and killswitch != 1:
         data = np.array(configSpace)
         data = np.transpose(data)
         #calling to map the RRT
-        pathHD = lab3.runRRT('HOUND', [20,40], data, houndstart,goalListHD[goalIndex][0] )
+        pathHD = lab3.runRRT('HOUND', [24,48], data, houndstart + [startHD[goalIndex]],goalListHD[goalIndex][0])
         #pathHD = []
-        pathHP = lab3.runRRT('HIPPO', [96,136], data, hippostart,goalListHP[goalIndex][0] )
+        pathHP = lab3.runRRT('HIPPO', [96,136], data, hippostart+ [startHP[goalIndex]],goalListHP[goalIndex][0])
 
         print("made it3")
         #print(pathHD)
@@ -375,10 +384,11 @@ while robot.step(timestep) != -1 and killswitch != 1:
         else:
             send("Abort")
         request = False
-        for x in hound_request:
-            x = False
-        for x in hippo_request:
-            x = False
+        print(request)
+        for x in range(0, len(hound_request)):
+            hound_request[x] = False
+        for x in range(0, len(hippo_request)):
+            hippo_request[x] = False
         if False:
             # COLLISION AVOIDANCE CODE
             # Trajectories for Hound

@@ -7,7 +7,7 @@ import numpy as np
 class rrt():
 
 
-    def __init__(self, origin = [250, 0, 0, 0,'',0], maxcoords = [500,500], stepsize = 5, N = 10000, obstacles = [[0, 0, 100, 500], [400, 0, 500, 500], [200, 300, 400, 325],
+    def __init__(self, origin = [250, 0, 0, 0,'',0], maxcoords = [500,500], stepsize = 5, N = 15000, obstacles = [[0, 0, 100, 500], [400, 0, 500, 500], [200, 300, 400, 325],
                      [100, 350, 250, 375]], goal = [140, 400, 150, 410], obstacletype = 'vertex', live = False, divis = 1):
         self.origin = origin  # Origin point, in form x,y,parent
         self.maxcoords = maxcoords  # Max values of field. x,y form. Assumes bottom left is 0,0
@@ -52,7 +52,7 @@ class rrt():
             elif theta_diff2 <= -math.pi:
                 theta_diff2 = theta_diff2 + 2*math.pi
         else:
-            coe = .75
+            coe = .7
             Vmax = .4*210 #Max distance for one second movement
             delta_max = 0.596807115 #max radians for one second rotation
             theta_diff1 = 0 # Hippo has no theta one to cover so its zero
@@ -103,7 +103,7 @@ class rrt():
 
     def takestepHOUND(self,startnode, targetnode, nodes):  # finds a point one unit step from startnode, in the direction of targetnode. Takes "node" in order to set new node's parent node in node[2]
         dt = 0.008        #Timestep in seconds
-        endtime = 1.6     #endtime in seconds
+        endtime = 2.4     #endtime in seconds
         instructionVector = []  #vector for instructions
         # Full spin and Full velocity
         theta_dot = 3.039003906
@@ -393,7 +393,7 @@ class rrt():
         self.initplot(self.goal, self.obstacles)    #initialize plot
 
         for k in range(0, self.N):      #create (or attempt to create) N nodes
-            if k % self.sweetener != 0:
+            if k % self.sweetener != 0 and k < self.N - 20:
                 xrand = self.randomPoint()  #choose a random point
             else:
                 xrand = self.goal
