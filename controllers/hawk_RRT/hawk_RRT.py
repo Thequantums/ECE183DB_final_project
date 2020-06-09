@@ -1,19 +1,16 @@
 """hawk_controller controller."""
 
-# You may need to import some classes of the controller module. Ex:
+#  You may need to import some classes of the controller module. Ex:
 #  from controller import Robot, Motor, DistanceSensor
 import math
 import ctypes
 from matplotlib import pyplot as plt
 import numpy as np
 from controller import Robot,Camera,CameraRecognitionObject,Compass,GPS,Gyro,InertialUnit,Keyboard,LED,Motor
-import lab3
+import planner
 from scipy.spatial import distance
-import collision_geometry as cg
 
-hound_radius = 1 #should be in meter
-hippo_radius = 0.25 #should be in meter
-
+# Function handles parsing messages received and setting system varibales for Hawk
 def process(message):
     global hound_request
     global hippo_request
@@ -34,6 +31,7 @@ def process(message):
             hippo_done[int(message[3])] = True
         return 2
 
+# Function is a wrapper function for sending info to other cars
 def send(code):
     if code == "Start_up":
         message = bytes("All Startup", 'utf-8')
@@ -52,6 +50,7 @@ def send(code):
         emitter.send(message)
     return 1
 
+# Given four points this function will calculate hoverzone for Hawk
 def get_goal_state(corners, fov):
     length = distance.euclidean(corners[0], corners[1])
     width = distance.euclidean(corners[0], corners[3])
@@ -97,40 +96,33 @@ camera_pitch_motor = robot.getMotor("camera pitch");
 emitter = robot.getEmitter('emitter')
 receiver = robot.getReceiver('receiver')
 receiver.enable(timestep)
-
-
 front_left_motor = robot.getMotor("front left propeller");
 front_right_motor = robot.getMotor("front right propeller");
 rear_left_motor = robot.getMotor("rear left propeller");
 rear_right_motor = robot.getMotor("rear right propeller");
 motors = {front_left_motor, front_right_motor, rear_left_motor, rear_right_motor};
 
+# Get Hover Zone
 corners = [(-1.5, -.5), (4, -.5), (4,3), (-1, 3)]
-
 hover_zone = get_goal_state(corners, 1)
+print("Hover Zone Calculated: ",hover_zone)
+target_altitude = hover_zone[1]
+target_x = hover_zone[0]
+target_z = hover_zone[2]
 
-print(hover_zone)
-
+# Initialize motors
 for m in motors:
     m.setPosition(math.inf);
     m.setVelocity(1.0);
 
+# Everyone Waits a second
 while (robot.step(timestep) != -1):
     if (robot.getTime() > 1.0):
         break
 
 print("Start the drone...");
 
-#print("You can control the drone with your computer keyboard:")
-#print("- 'up': move forward.")
-#print("- 'down': move backward.")
-#print("- 'right': turn right.")
-#print("- 'left': turn left.")
-#print("- 'shift + up': increase the target altitude.")
-#print("- 'shift + down': decrease the target altitude.")
-#print("- 'shift + right': strafe right.")
-#print("- 'shift + left': strafe left.")
-
+# Constants for the PID controller
 roll_trim = 0.07 #positive is right
 pitch_trim = 0.15 #positive is backwards
 k_vertical_thrust = 68.5
@@ -142,41 +134,31 @@ killswitch = 0.0
 
 target_yaw = imu.getRollPitchYaw()[2] +.02
 
-target_altitude = hover_zone[1]
-target_x = hover_zone[0]
-target_z = hover_zone[2]
 
 camx=camera.getWidth()
 camy=camera.getHeight()
 configSpace = []
-
 for k in range(camx):
     configtemp = []
     for l in range(camy):
         configtemp.append(0)
     configSpace.append(configtemp)
 
-latch = False
-
+# Intitialize state machine varibles and other constants
 rende = (4 , 3)
 request = 0
 hover1 = 0
 y_good = False
-
 x1 = 0
 x_good = False
-
 z1 = 0
 z_good = False
-
+start_sent = False
 done = False
-
 hound_request = [False]
 hippo_request = [False]
-
 hound_done = [False]
 hippo_done = [False]
-
 houndstart = [0,0]
 hippostart = [0,0]
 
@@ -185,22 +167,18 @@ hippostart = [0,0]
 #startHP = [0, -math.pi/2, 0]
 #goalListHP = [[[845,535, -math.pi/2],"Hippo 0 Cap Push"],[[900, 835, 0],"Hippo 0 Cap Wait"], [[710,1110, 0],"Hippo 0 Cap Done"]]
 
-goalListHD = [[[720,1120, 0],"Hound 0 Cap Wait"],[[310, 900, 0],"Hound 0 Cap Push"], [[710,1110, 0],"Hound 0 Cap Done"]]
+goalListHD = [[[600,350, math.pi],"Hound 0 Cap Wait"],[[310, 900, 0],"Hound 0 Cap Push"], [[710,1110, 0],"Hound 0 Cap Done"]]
 startHD = [0, math.pi, 0]
 startHP = [0, -math.pi/2, 0]
-goalListHP = [[[720,1120, 0],"Hippo 0 Cap Push"],[[900, 835, 0],"Hippo 0 Cap Wait"], [[710,1110, 0],"Hippo 0 Cap Done"]]
+goalListHP = [[[845,535, -math.pi/2],"Hippo 0 Cap Push"],[[900, 835, 0],"Hippo 0 Cap Wait"], [[710,1110, 0],"Hippo 0 Cap Done"]]
 goalIndex = 0
 
-start_sent = False
-
 # Main loop:
-# - perform simulation steps until Webots is stopping the controller
+# - perform simulation steps until Webots is stops the controller
 while robot.step(timestep) != -1 and killswitch != 1:
-    # Read the sensors:
-    # Enter here functions to read sensor data, like:
-    #  val = ds.getValue()
-    time = robot.getTime()
     
+    # This while goes through all messages received and parses them
+    # changing state as appropriate
     while receiver.getQueueLength() > 0:
         message = receiver.getData()
         code = process(message)
@@ -208,11 +186,9 @@ while robot.step(timestep) != -1 and killswitch != 1:
             temp = True
             for x in hound_request:
                 if not x:
-                    print(x)
                     temp = False
             for x in hippo_request:
                 if not x:
-                    print(x)
                     temp = False
             if temp:
                 request = True       
@@ -230,12 +206,9 @@ while robot.step(timestep) != -1 and killswitch != 1:
                 z_good = False
                 target_x = rende[0]
                 target_z = rende[1]
-        receiver.nextPacket()
-    if done and x_good and z_good:
-        y_good = False
-        target_altitude = 1    
+        receiver.nextPacket()    
 
-
+    # Collect sensor reaadings from Hawk
     roll = imu.getRollPitchYaw()[0] + (math.pi / 2.0)
     pitch = imu.getRollPitchYaw()[1]
     yaw = imu.getRollPitchYaw()[2]
@@ -245,27 +218,27 @@ while robot.step(timestep) != -1 and killswitch != 1:
     roll_acceleration = gyro.getValues()[0]
     pitch_acceleration = gyro.getValues()[1]
 
-    x = gps.getValues()[0]
-
-
+    # Pretty Lights
+    time = robot.getTime()
     led_state = int(time) % 2
     front_left_led.set(led_state)
     front_right_led.set(~led_state)
 
-
+    # Controls Camera Shakiness
     camera_roll_motor.setPosition( -0.115 * roll_acceleration)
     camera_pitch_motor.setPosition(-0.1 * pitch_acceleration)
-    compVal = compass.getValues()
-    heading = ((math.atan2(compVal[0],compVal[1]))+math.pi)*(180/math.pi)
 
+    # Setup for inputs
     roll_disturbance = 0.0
     pitch_disturbance = 0.0
     yaw_disturbance = 0.0
     
+    # Calculates Errors in Position
     altitude_error = abs(altitude - target_altitude)
     x_error = target_x - x
     z_error = target_z - z
 
+    # Altitide correction: Threshold of Error and Time for verifications can be changed
     if altitude_error < .4 and not y_good:
         hover1 = hover1 + 1
         if hover1 > 100:
@@ -275,6 +248,7 @@ while robot.step(timestep) != -1 and killswitch != 1:
         hover1 = 0
         y_good = False
 
+    # x correction: Threshold of Error and Time for verifications can be changed
     if y_good:
         if abs(x_error) < .1 and not x_good:
             x1 = x1 + 1
@@ -285,7 +259,8 @@ while robot.step(timestep) != -1 and killswitch != 1:
             x1 = 0
             x_good = False
             pitch_disturbance = max(min(x_error, 2), -2)
-
+    
+    # z correction: Threshold of Error and Time for verifications can be changed
     if y_good and x_good:
         if abs(z_error) < .04 and not z_good:
             z1 = z1 + 1
@@ -297,7 +272,13 @@ while robot.step(timestep) != -1 and killswitch != 1:
             z1 = 0
             z_good = False
             roll_disturbance = -max(min(z_error, 1.5), -1.5)
-            
+           
+    # Once done and x and z good, hover down to the floor
+    if done and x_good and z_good:
+        y_good = False
+        target_altitude = 1       
+           
+    # Valid Hover_mode Requires x y and z good 
     if y_good and x_good and z_good:
         hover_mode = True
         if not start_sent:
@@ -306,16 +287,16 @@ while robot.step(timestep) != -1 and killswitch != 1:
     else:
         hover_mode = False
 
+    # Only Satisfy requests if there is one, you're in hover mode, and not done(although there
+    # should be no requests if u are done)
     if request and hover_mode and not done:
+        # This next batch of code handles setting up the input to the RRT and configuration space
         number_of_objects = camera.getRecognitionNumberOfObjects();
-        #print("\n Recognized ",number_of_objects, " objects." );
         if number_of_objects > 0:
                 objects = camera.getRecognitionObjects()
-
         for k in range(camx):
             for l in range(camy):
                 configSpace[k][l] = 0
-
        #using webots super camera
         for i in objects:
             pptr = int(i.position)
@@ -330,17 +311,10 @@ while robot.step(timestep) != -1 and killswitch != 1:
             siptr = int(i.size_on_image)
             size_on_image = ctypes.c_int * 2
             size_on_image = size_on_image.from_address(siptr)
-            #print("Model of object ", i.model);
-            #print("Camera: ", camx," ", camy);
-            #print("Relative position of object ", i.model, position[0],position[1],position[2])
-            #print("Relative orientation of object \n", i.model, orientation[0],orientation[1],orientation[2],orientation[3])
-            #print("Position of the object %d on the camera image: ", i.model, position_on_image[0],position_on_image[1])
-            #print("Size of the object %d on the camera image: ", i.model, size_on_image[0],size_on_image[1])
             centx =position_on_image[0]
             centy = position_on_image[1]
             xdist = math.ceil(size_on_image[0]/2)
             ydist = math.ceil(size_on_image[1]/2)
-            #print(i.get_colors())
             if(i.get_colors() == [1,1,1]):
                 houndstart = [centx,camy - centy]
             elif (i.get_colors() == [0, 0, 0]):
@@ -351,17 +325,25 @@ while robot.step(timestep) != -1 and killswitch != 1:
                     for cdy in range(centy-ydist,centy+ydist):
                         if(cdx>=0 and cdx<camx and cdy>=0 and cdy<camy):
                             configSpace[cdx][cdy] = 1;
-
         data = np.array(configSpace)
         data = np.transpose(data)
-        #calling to map the RRT
-        pathHD = lab3.runRRT('HOUND', [24,48], data, houndstart + [startHD[goalIndex]],goalListHD[goalIndex][0])
-        #pathHD = []
-        pathHP = lab3.runRRT('HIPPO', [96,136], data, hippostart+ [startHP[goalIndex]],goalListHP[goalIndex][0])
-
-        print("made it3")
-        #print(pathHD)
-        print(pathHP)
+        
+        # Calling to map the RRT (you get five chances each)
+        chances = 0
+        while chances < 5:
+            pathHD = planner.runRRT('HOUND', [24,48], data, houndstart + [startHD[goalIndex]],goalListHD[goalIndex][0])
+            if pathHD != []:
+                break
+            chances = chances + 1
+        
+        chances = 0
+        while chances < 5:
+            pathHP = planner.runRRT('HIPPO', [96,136], data, hippostart+ [startHP[goalIndex]],goalListHP[goalIndex][0])
+            if pathHP != []:
+                break
+            chances = chances + 1
+        
+        # Send Path to Hound if found
         if pathHD != []:
             for x in pathHD:
                 for y in x[3]:
@@ -369,7 +351,7 @@ while robot.step(timestep) != -1 and killswitch != 1:
                     send(message)
             send(goalListHD[goalIndex][1])
 
-        
+        # Send Path to Hippo if found
         if pathHP != []:
             for x in pathHP:
                 for y in x[3]:
@@ -377,81 +359,26 @@ while robot.step(timestep) != -1 and killswitch != 1:
                     send(message)
             send(goalListHP[goalIndex][1])
 
-
+        # If either robot fails to find a path send up the FooBar ALert!
         if pathHD != [] and pathHP != []:
             send("Go")
             goalIndex = goalIndex+1
         else:
             send("Abort")
+            
+        # Reset request variables
         request = False
-        print(request)
         for x in range(0, len(hound_request)):
             hound_request[x] = False
         for x in range(0, len(hippo_request)):
             hippo_request[x] = False
-        if False:
-            # COLLISION AVOIDANCE CODE
-            # Trajectories for Hound
-            # Each node has the form of (x,y,delta,parent)
-            hound_path = lab3.runRRT('hound', 1, data, [0, 0], [camx - 1, camy - 1])
-            # Trajectories for Hippo
-            hippo_path = lab3.runRRT('hippo', 1, data, [0, 0], [camx - 1, camy - 1])
-
-            # Translating from pixels to real worls unit
-
-            # Translating to worlds coordinates
-
-            # each node has the form of: x, y, delta, parent, type A conflicts nodes, type B conflict nodes, type C conflict nodes.
-            #Type A: attemp_to_go_conflict_node (Crossing path) (list)
-            #Type B: driving conflict node (list)
-            #Type C: arriving conflict node (list)
-            # 7th field is to store the potential nodes of colliding while driving
-            #Append three empty lists to each nodes. The three lists are for storing type A, type B, type C conflicts nodes
-            for i in range(len(hound_path)):
-                hound_path[i].extend(([],[],[]))
-
-            for i in range(len(hippo_path)):
-                hippo_path[i].extend(([],[],[]))
-
-            #Mark the conflict nodes and exchange information between hound and hippo
-            for i in range(len(hound_path) - 1):
-                init_hound = cg.Point(hound_path[i][0], hound_path[i][1]) #point of current node of hound
-                final_hound = cg.Point(hound_path[i + 1][0], hound_path[i + 1][1]) #point of next node of hound
-                for j in range(len(hippo_path) - 1):
-                    init_hippo = cg.Point(hippo_path[j][0], hippo_path[j][1]) #point of current node of hippo
-                    final_hippo = cg.Point(hippo_path[j + 1][0], hippo_path[j + 1][1]) #point of next node of hippo
-                    if cg.doIntersect(init_hound, final_hound, init_hippo, final_hippo):
-                        # paths crossed between hound and hippo. This create a type A conflict
-                        hound_path[i][4].append([init_hippo.x, init_hippo.y])
-                        hippo_path[j][4].append([init_hound.x, init_hound.y])
-                    if cg.check_two_circles_intersect(init_hound,hound_radius,init_hippo,hippo_radius):
-                        # if a hound and a hippo occupied a node with their respective radii, then it overlaps
-                        hound_path[i][5].append([init_hippo.x, init_hippo.y])
-                        hippo_path[j][5].append([init_hound.x, init_hound.y])
-                    if cg.check_robot_is_moving(init_hound, final_hound, hound_radius, init_hippo, hippo_radius):
-                        # hound is moving from inital node to next node, check if hippo is stationary in j node can overlap the path hound is moving
-                        hound_path[i][6].append([init_hippo.x, init_hippo.y])
-                    if cg.check_robot_is_moving(init_hippo, final_hippo, hippo_radius, init_hound, hound_radius):
-                        # hippo is moving from inital node to next node, check if hound is stationary in i node can overlap the path hippo is moving
-                        hippo_path[j][6].append([init_hound.x, init_hound.y])
-
-            #check type B conflicts for goal node of hound and hippo
-            hound_goal_node = cg.Point(hound_path[len(hound_path) -1].x,hound_path[len(hound_path) -1].y)
-            hippo_goal_node = cg.Point(hippo_path[len(hippo_path) -1].x, hippo_path[len(hippo_path) -1].y)
-            for i in range(len(hippo_path)):
-                init_hippo = cg.Point(hippo_path[i][0], hippo_path[i][1]) #point of current node of hippo
-                if cg.doIntersect(hound_goal_node,hound_radius,init_hippo,hippo_radius):
-                    hound_path[len(hound_path) - 1][5].append([init_hippo.x, init_hippo.y])
-            for i in range(len(hound_path)):
-                init_hound = cg.Point(hound_path[i][0], hound_path[i][1])
-                if cg.doIntersect(hippo_goal_node, hippo_radius, init_hound, hound_radius):
-                    hippo_path[len(hippo_path) - 1][5].append([init_hound.x, init_hound.y])
-
-            # send the hound and hippo path to hound and hippo.            
-
+         
+    
+    # Once done done, hit the kill_switch
     if done and y_good and x_good and z_good:
         killswitch = 1
 
+    # Variables that effect propeller inputs
     clamped_difference_yaw = max(min(target_yaw - yaw, 1), -1)
     yaw_input = -clamped_difference_yaw
     roll_input = k_roll_p * max(min(roll, 1), -1) + roll_acceleration + roll_disturbance + roll_trim
@@ -459,29 +386,21 @@ while robot.step(timestep) != -1 and killswitch != 1:
     clamped_difference_altitude = max(min(target_altitude - altitude + k_vertical_offset, 1), -1)
     vertical_input = k_vertical_p * math.pow(clamped_difference_altitude, 3.0)
 
-
+    # Setup up propeller inputs
     front_left_motor_input = k_vertical_thrust + vertical_input - roll_input - pitch_input + yaw_input
     front_right_motor_input = k_vertical_thrust + vertical_input + roll_input - pitch_input - yaw_input
     rear_left_motor_input = k_vertical_thrust + vertical_input - roll_input + pitch_input - yaw_input
     rear_right_motor_input = k_vertical_thrust + vertical_input + roll_input + pitch_input + yaw_input
 
-    if(killswitch == 1):
+    # KILL SWITCH
+    if killswitch == 1:
         front_left_motor_input = 0.0;
         front_right_motor_input = 0.0;
         rear_left_motor_input = 0.0;
         rear_right_motor_input = 0.0;
 
-
+    # Inputs
     front_left_motor.setVelocity(front_left_motor_input)
     front_right_motor.setVelocity(-front_right_motor_input)
     rear_left_motor.setVelocity(-rear_left_motor_input)
     rear_right_motor.setVelocity(rear_right_motor_input)
-
-
-
-
-
-    # Process sensor data here.
-
-    # Enter here functions to send actuator commands, like:
-    #  motor.setPosition(10.0)
