@@ -96,8 +96,6 @@ class imgToObs():
         return np.logical_not(np.logical_not(input))
 
     def obsSpaceGen(self,robotSpace,obsSpace,scaledown,debug = False):
-        fig = plt.figure()
-        ax = fig.add_subplot(111, projection='3d')
         obs = np.array(im.fromarray(obsSpace).resize(size=(round(np.shape(obsSpace)[1]/scaledown),round(np.shape(obsSpace)[0]/scaledown))))
         [x,y] = robotSpace
         robot = np.ones((y, x))
@@ -113,27 +111,31 @@ class imgToObs():
             configSpace.append(np.array(im.fromarray(temp).resize(resample = im.BICUBIC,size = (np.shape(obsSpace)[1],np.shape(obsSpace)[0]))))
             print(i)
         if debug:
-           # for c in configSpace:
-           #     plt.imshow(np.flip(np.add(c.astype(int),obsSpace.astype(int)),0))
-           #     plt.show()
-            print(np.array(configSpace).shape)
-            configSpace = np.array(configSpace)
-            xl=[]
-            yl=[]
-            zl=[]
-            coordlist=[]
-            for i in range(configSpace.shape[0]):
-                for x in range(configSpace.shape[2]):
-                    for y in range(configSpace.shape[1]):
-                        #print(configSpace[i][y][x])
-                        if configSpace[i][y][x] == True:
-                            xl.append(x)
-                            yl.append(y)
-                            zl.append(i)
 
-            ax.scatter(xl, yl, zl,c=zl)
-            ax.view_init(70,45)
-            plt.show()
+           for c in configSpace:
+                plt.imshow(np.flip(np.add(c.astype(int),obsSpace.astype(int)),0))
+                plt.show()
+           print(np.array(configSpace).shape)
+           configSpace = np.array(configSpace)
+           xl=[]
+           yl=[]
+           zl=[]
+           coordlist=[]
+           for i in range(configSpace.shape[0]):
+              for x in range(configSpace.shape[2]):
+                  for y in range(configSpace.shape[1]):
+                      #print(configSpace[i][y][x])
+                      if configSpace[i][y][x] == True:
+                          xl.append(x)
+                          yl.append(y)
+                          zl.append(i)
+           fig = plt.figure()
+           ax = fig.add_subplot(111, projection='3d')
+           ax.scatter(xl, yl, zl,c=zl)
+           ax.view_init(75,45)
+           mng = plt.get_current_fig_manager()
+           mng.full_screen_toggle()
+           plt.show()
         return np.array(configSpace)
 
 
@@ -145,7 +147,4 @@ if __name__ == "__main__":
     plt.imshow(np.array(gray))
     plt.show()
     conSpace = o.obsSpaceGen([20,5],np.logical_not(np.array(gray)),scaledown=1,debug=True)
-    gray = np.logical_not(np.array(gray))
-    for obs in conSpace:
-        plt.imshow(np.add(gray.astype(int),obs.astype(int)))
-        plt.show()
+
