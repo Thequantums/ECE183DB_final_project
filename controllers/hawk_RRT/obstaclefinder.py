@@ -110,12 +110,12 @@ class imgToObs():
             temp = self.toBin(s.convolve2d(obs, r))[xT:-xT,yT:-yT]
             configSpace.append(np.array(im.fromarray(temp).resize(resample = im.BICUBIC,size = (np.shape(obsSpace)[1],np.shape(obsSpace)[0]))))
             print(i)
-        if debug:
+        if debug == 'slice' or debug == 'both':
 
            for c in configSpace:
                 plt.imshow(np.flip(np.add(c.astype(int),obsSpace.astype(int)),0))
                 plt.show()
-           print(np.array(configSpace).shape)
+        if debug == 'full' or debug == 'both':
            configSpace = np.array(configSpace)
            xl=[]
            yl=[]
@@ -146,5 +146,5 @@ if __name__ == "__main__":
     gray = cv2.cvtColor(o.image, cv2.COLOR_BGR2GRAY)
     plt.imshow(np.array(gray))
     plt.show()
-    conSpace = o.obsSpaceGen([20,5],np.logical_not(np.array(gray)),scaledown=1,debug=True)
+    conSpace = o.obsSpaceGen([20,5],np.logical_not(np.array(gray)),scaledown=1,debug='slice')
 
