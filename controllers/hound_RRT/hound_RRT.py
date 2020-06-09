@@ -5,7 +5,7 @@ from controller import Robot, Motor, Emitter, Receiver, Keyboard
 # these two elements, returns an int that represents a code as to what should be done based on message
 def process(message):
     message = message.decode('utf-8')
-    print(message)
+    #print(message)
     message = message.split()
     if (message[0] != "Hound" or message[1] != "0") and message[0] != "All":
         return 0
@@ -42,12 +42,15 @@ def send(code):
     elif code == "Stall":
         message = bytes("All Stall Hound 0", 'utf-8')
         emitter.send(message)
+    else:
+        message = bytes(code,'utf-8')
+        emitter.send(message)
         # Needs to be filled up with further code to get full implementation
     return 1
        
 #Max angular rotation of Hound wheels
 MAX_SPEED = 20
-
+cheated = False
 #Initializes Robot and its parts
 robot = Robot()
 TIME_STEP = int(robot.getBasicTimeStep())
@@ -105,9 +108,9 @@ while robot.step(TIME_STEP) != -1:
         if code == 0:
             pass
         elif code == 1:
+            sent_request = False
             path_mode = True
             wait_mode = False
-            sent_request = False
         elif code == -1:
             start_mode = False
             wait_mode = True
@@ -137,7 +140,12 @@ while robot.step(TIME_STEP) != -1:
     # it enters the wait mode automatically, resets necessary variables at end                
     elif push_mode:
         counter = counter + 1
+        if not cheated:
+            cheated = True
+            emitter.setChannel(3)
+            send("Cheat")
         if counter > 380:
+            emitter.setChannel(1)
             push_mode = False
             wait_mode = True
             counter = 0
