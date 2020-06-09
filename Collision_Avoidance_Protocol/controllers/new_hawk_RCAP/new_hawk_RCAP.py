@@ -3,7 +3,7 @@
 # You may need to import some classes of the controller module. Ex:
 #  from controller import Robot, Motor, DistanceSensor
 
-from controller import Robot, Emitter, Receiver, Motor 
+from controller import Robot, Emitter, Receiver, Motor, Keyboard
 from matplotlib import pyplot as plt
 import numpy as np
 import threading
@@ -75,11 +75,14 @@ def generate_random_trajectory(n):
 def chose_path(n):
 	if n == 0:
 		return [[0.5,0.5], [0.6,0.7], [1.2,1.3],[1.4,2], [1.5,1.6], [2,2.4], [3.6,2], [3.8,2.5], [4,2.7],[4.3,2.8],[4.4,3]], [[2.5,0],[2.5,1],[2.6,1.2],[2.8,1.4],[3.1,1.8],[3.2,3.4],[3.4,3.5],[3.5,4],[4,3.4],[5,4]]
+	if n == 2:
+		return [[0.5,0.5], [0.6,0.7], [3,0],[1,3,4],[4,5],[2,4],[5,5]], [[2.5,0],[2.5,1],[1,1.5], [1.4,1.5], [1,1.6], [2,3], [3,4],[3.5,4.5],[1,2]]
 	else:
-		return [[1.333,1.333],[2.2,2.66], [4.5,2.4], [0,1],[3,5],[4,6]], [[4,1], [4.5,2.5], [2,2.66], [4,6.5], [4.5,4], [6,5], [5,1], [3,2]]
+		return [[0.5,0.5], [0.6,0.7],[1.333,1.333],[2.2,2.66], [4.5,2.4], [0,1],[3,5],[4,6]], [[2.5,0],[2.5,1],[4,1], [4.5,2.5], [2,2.66], [4,6.5], [4.5,4], [6,5], [5,1], [3,2]]
 
 def RRT():
-	hippo_path, hound_path = chose_path(0)
+	n = random.randint(0,3)
+	hippo_path, hound_path = chose_path(n)
 	#sleep 2 secs before generate another random trajectory
 	#hippo_path = [[1.333,1.333],[2.2,2.66], [4.5,2.4], [0,1]]
 	#hound_path = [[4,1], [4.5,2.5], [2,2.66], [4,6.5], [4.5,4], [6,5], [5,1], [3,2]]
@@ -186,9 +189,14 @@ def plt_my_path(path,radius,color):
 
     gx, gy = circle(path[len(path)-1][0],path[len(path)-1][1],radius)
     ax.plot(gx,gy,color = color)
-	
+
+
+#print("press 1 to 3 to choose the path\n")
+#input_char = msvcrt.getch()
+#print("my input",input_char)
 
 while robot.step(timestep) != -1:
+	#print("my key", key)
 	if send_once:
 		hound_path, hippo_path = RRT()
 		hound_for_plt, hippo_for_plt = hound_path, hippo_path
