@@ -37,12 +37,35 @@ WorldInfo {
   ]
 }
 Viewpoint {
-  orientation 0.003867128197337078 0.7449032502470582 0.667161294658851 3.1502281019749803
-  position 1.649829544310852 11.967102716172496 -0.48573842054218497
+  orientation -0.0005430391959908077 0.7314172994332326 0.681929937162337 3.140427759087707
+  position 5.83740312339981 30.32399375490111 3.2049088407842135
   followType "None"
 }
 Floor {
   size 50 50
+}
+Wall {
+  translation 5.97 1.3145e-13 14
+  rotation 0 1 0 3.14159
+  size 16 0.2 0.1
+}
+Wall {
+  translation 5.99656 -4.68958e-13 -1.9442
+  rotation 0 1 0 3.14159
+  name "wall(3)"
+  size 16 0.2 0.1
+}
+Wall {
+  translation 14 -1.06581e-14 6.07
+  rotation 0 1 0 -1.5707953071795862
+  name "wall(1)"
+  size 16 0.2 0.1
+}
+Wall {
+  translation -2.03231 -1.06581e-14 6.0197
+  rotation 0 1 0 -1.5707953071795862
+  name "wall(2)"
+  size 16 0.2 0.1
 }
 TexturedBackground {
 }
@@ -54,7 +77,7 @@ WoodenBox {
   mass 2
 }
 Solid {
-  translation -4.04545 -1.57223e-05 6.62725
+  translation -11.4989 -1.57223e-05 2.27198
   rotation 1 0 0 4.692820414042842e-06
   children [
     DEF WALL-SHAPE Shape {
@@ -72,23 +95,6 @@ Solid {
       }
     }
   ]
-  boundingObject USE WALL-SHAPE
-}
-Solid {
-  translation 0.158665 0 -3.35383
-  children [
-    USE WALL-SHAPE
-  ]
-  name "solid(1)"
-  boundingObject USE WALL-SHAPE
-}
-Solid {
-  translation 6.46731 0 -3.47367
-  rotation 0 1 0 1.5707996938995747
-  children [
-    USE WALL-SHAPE
-  ]
-  name "solid(2)"
   boundingObject USE WALL-SHAPE
 }
 Solid {
@@ -372,7 +378,7 @@ Youbot {
   ]
 }
 Solid {
-  translation -1.12201 0.16 -2.19567
+  translation -4.98301 0.19 -2.38616
   children [
     DEF box Shape {
       appearance PBRAppearance {
