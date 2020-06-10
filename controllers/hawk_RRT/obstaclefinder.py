@@ -6,6 +6,8 @@ import numpy as np
 import cv2
 import matplotlib.pyplot as plt
 import math
+from matplotlib.tri import Triangulation
+from scipy.spatial import ConvexHull
 from scipy import signal as s
 from scipy import ndimage as sim
 from scipy import misc as m
@@ -108,10 +110,32 @@ class imgToObs():
             temp = self.toBin(s.convolve2d(obs, r))[xT:-xT,yT:-yT]
             configSpace.append(np.array(im.fromarray(temp).resize(resample = im.BICUBIC,size = (np.shape(obsSpace)[1],np.shape(obsSpace)[0]))))
             print(i)
-        if debug:
-            for c in configSpace:
+        if debug == 'slice' or debug == 'both':
+
+           for c in configSpace:
                 plt.imshow(np.flip(np.add(c.astype(int),obsSpace.astype(int)),0))
                 plt.show()
+        if debug == 'full' or debug == 'both':
+           configSpace = np.array(configSpace)
+           xl=[]
+           yl=[]
+           zl=[]
+           coordlist=[]
+           for i in range(configSpace.shape[0]):
+              for x in range(configSpace.shape[2]):
+                  for y in range(configSpace.shape[1]):
+                      #print(configSpace[i][y][x])
+                      if configSpace[i][y][x] == True:
+                          xl.append(x)
+                          yl.append(y)
+                          zl.append(i)
+           fig = plt.figure()
+           ax = fig.add_subplot(111, projection='3d')
+           ax.scatter(xl, yl, zl,c=zl)
+           ax.view_init(75,45)
+           mng = plt.get_current_fig_manager()
+           mng.full_screen_toggle()
+           plt.show()
         return np.array(configSpace)
 
 
@@ -122,8 +146,5 @@ if __name__ == "__main__":
     gray = cv2.cvtColor(o.image, cv2.COLOR_BGR2GRAY)
     plt.imshow(np.array(gray))
     plt.show()
-    conSpace = o.obsSpaceGen([22,22],np.logical_not(np.array(gray)))
-    gray = np.logical_not(np.array(gray))
-    for obs in conSpace:
-        plt.imshow(np.add(gray.astype(int),obs.astype(int)))
-        plt.show()
+    conSpace = o.obsSpaceGen([20,5],np.logical_not(np.array(gray)),scaledown=1,debug='slice')
+

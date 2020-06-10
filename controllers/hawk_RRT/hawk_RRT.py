@@ -8,6 +8,7 @@ from matplotlib import pyplot as plt
 import numpy as np
 from controller import Robot,Camera,CameraRecognitionObject,Compass,GPS,Gyro,InertialUnit,Keyboard,LED,Motor
 import planner
+import dynObsPlanner
 from scipy.spatial import distance
 
 # Function handles parsing messages received and setting system varibales for Hawk
@@ -143,6 +144,14 @@ for k in range(camx):
     for l in range(camy):
         configtemp.append(0)
     configSpace.append(configtemp)
+dynObsSpace = []
+for k in range(camx):
+    configtemp = []
+    for l in range(camy):
+        configtemp.append(0)
+    dynObsSpace.append(configtemp)
+
+
 
 # Intitialize state machine varibles and other constants
 rende = (4 , 3)
@@ -166,6 +175,7 @@ hippostart = [0,0]
 #startHD = [0, math.pi, 0]
 #startHP = [0, -math.pi/2, 0]
 #goalListHP = [[[845,535, -math.pi/2],"Hippo 0 Cap Push"],[[900, 835, 0],"Hippo 0 Cap Wait"], [[710,1110, 0],"Hippo 0 Cap Done"]]
+dynObsLatch = False
 
 goalListHD = [[[600,350, math.pi],"Hound 0 Cap Wait"],[[310, 900, 0],"Hound 0 Cap Push"], [[710,1110, 0],"Hound 0 Cap Done"]]
 startHD = [0, math.pi, 0]
@@ -206,7 +216,7 @@ while robot.step(timestep) != -1 and killswitch != 1:
                 z_good = False
                 target_x = rende[0]
                 target_z = rende[1]
-        receiver.nextPacket()    
+        receiver.nextPacket()
 
     # Collect sensor reaadings from Hawk
     roll = imu.getRollPitchYaw()[0] + (math.pi / 2.0)
@@ -259,7 +269,7 @@ while robot.step(timestep) != -1 and killswitch != 1:
             x1 = 0
             x_good = False
             pitch_disturbance = max(min(x_error, 2), -2)
-    
+
     # z correction: Threshold of Error and Time for verifications can be changed
     if y_good and x_good:
         if abs(z_error) < .04 and not z_good:
@@ -272,13 +282,13 @@ while robot.step(timestep) != -1 and killswitch != 1:
             z1 = 0
             z_good = False
             roll_disturbance = -max(min(z_error, 1.5), -1.5)
-           
+
     # Once done and x and z good, hover down to the floor
     if done and x_good and z_good:
         y_good = False
-        target_altitude = 1       
-           
-    # Valid Hover_mode Requires x y and z good 
+        target_altitude = 1
+
+    # Valid Hover_mode Requires x y and z good
     if y_good and x_good and z_good:
         hover_mode = True
         if not start_sent:
@@ -319,15 +329,29 @@ while robot.step(timestep) != -1 and killswitch != 1:
                 houndstart = [centx,camy - centy]
             elif (i.get_colors() == [0, 0, 0]):
                 hippostart = [centx,camy - centy]
-            elif(i.get_colors() == [1,0,0]):
+            elif(i.get_colors() == [1,0,0] or i.get_colors() == [1,1,0] or i.get_colors() == [1,0,1]):
                 #getting configspace for obstacles
                 for cdx in range(centx-xdist,centx+xdist):
                     for cdy in range(centy-ydist,centy+ydist):
                         if(cdx>=0 and cdx<camx and cdy>=0 and cdy<camy):
                             configSpace[cdx][cdy] = 1;
+                            if(i.get_colors() == [1,1,0]):
+                                dynObsSpace[cdx][cdy] = 1
+                            elif(i.get_colors() == [1,0,1]):
+                                dynObsSpace[cdx][cdy] = 2
+                            else:
+                                dynObsSpace[cdx][cdy] = 0
+
         data = np.array(configSpace)
+        dynData = np.array(dynObsSpace)
         data = np.transpose(data)
-        
+        dynData = np.transpose(dynData)
+        if dynObsLatch == False:
+            dynObs = dynObsPlanner.dynObsPlanner(data,dynData)
+            garbage = dynObs.dyncheck(houndstart,[768, 1143])
+            print(garbage)
+            dynObsLatch = True
+
         # Calling to map the RRT (you get five chances each)
         chances = 0
         while chances < 5:
@@ -335,14 +359,14 @@ while robot.step(timestep) != -1 and killswitch != 1:
             if pathHD != []:
                 break
             chances = chances + 1
-        
+
         chances = 0
         while chances < 5:
             pathHP = planner.runRRT('HIPPO', [96,136], data, hippostart+ [startHP[goalIndex]],goalListHP[goalIndex][0])
             if pathHP != []:
                 break
             chances = chances + 1
-        
+
         # Send Path to Hound if found
         if pathHD != []:
             for x in pathHD:
@@ -365,15 +389,15 @@ while robot.step(timestep) != -1 and killswitch != 1:
             goalIndex = goalIndex+1
         else:
             send("Abort")
-            
+
         # Reset request variables
         request = False
         for x in range(0, len(hound_request)):
             hound_request[x] = False
         for x in range(0, len(hippo_request)):
             hippo_request[x] = False
-         
-    
+
+
     # Once done done, hit the kill_switch
     if done and y_good and x_good and z_good:
         killswitch = 1
