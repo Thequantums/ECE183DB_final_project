@@ -8,7 +8,6 @@ from matplotlib import pyplot as plt
 import numpy as np
 from controller import Robot,Camera,CameraRecognitionObject,Compass,GPS,Gyro,InertialUnit,Keyboard,LED,Motor
 import planner
-import lab3
 import dynObsPlanner
 from scipy.spatial import distance
 
@@ -176,7 +175,7 @@ hippostart = [0,0]
 #startHD = [0, math.pi, 0]
 #startHP = [0, -math.pi/2, 0]
 #goalListHP = [[[845,535, -math.pi/2],"Hippo 0 Cap Push"],[[900, 835, 0],"Hippo 0 Cap Wait"], [[710,1110, 0],"Hippo 0 Cap Done"]]
-dynObsLatch = True
+dynObsLatch = False
 
 goalListHD = [[[600,350, math.pi],"Hound 0 Cap Wait"],[[310, 900, 0],"Hound 0 Cap Push"], [[710,1110, 0],"Hound 0 Cap Done"]]
 startHD = [0, math.pi, 0]
@@ -349,7 +348,7 @@ while robot.step(timestep) != -1 and killswitch != 1:
         dynData = np.transpose(dynData)
         if dynObsLatch == False:
             dynObs = dynObsPlanner.dynObsPlanner(data,dynData)
-            garbage = dynObs.dyncheck(houndstart,[569, 835])
+            garbage = dynObs.dyncheck(houndstart,[768, 1143])
             print(garbage)
             dynObsLatch = True
 

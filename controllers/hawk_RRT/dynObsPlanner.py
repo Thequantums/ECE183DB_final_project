@@ -11,7 +11,7 @@ class dynObsPlanner():
     def __init__(self, obs, dynObs, divis=1,N=1000):
         self.maxcoords = obs.shape  # Max values of field. x,y form. Assumes bottom left is 0,0
         self.N = N  # Iterations to run
-        self.obstacles = obs  # Configuration space, including obstacles. In the form of an array with indeces representing x and y coordinates
+        self.obstacles = np.transpose(np.add(obs,dynObs))[:, ::-1]  # Configuration space, including obstacles. In the form of an array with indeces representing x and y coordinates
         self.divis = divis  # draw every divis changes
         self.sweetener = 25  # determines how often to push the tree towards the goal state. EG a value of 100 means it sets the random point to the goal
 
@@ -52,12 +52,16 @@ class dynObsPlanner():
         endtime = 1.6  # endtime in seconds
         dynO = 0  # vector for instructions
         # Full spin and Full velocity
-        V = .5 * 210
+        V = .25 * 210
         currentPos = [startnode[0], startnode[1], nodes.index(startnode),0]  # initialize currentPosition to startPosition
         prevPos = currentPos  # initialize prevPos to currentPos
         # Counter keeps track of number of timesteps for a given input
         counter = 0
+        theta_path = math.atan2(targetnode[0] - startnode[0],
+                                targetnode[1] - startnode[1])  # calculate theta_path for the given two points
 
+        xvel = V * math.cos(theta_path)  # calculate X and Z components of velocity
+        zvel = V * math.sin(theta_path)
         # Incremental step
         for t in range(0, int(endtime / dt)):  # for each time step
             if self.obsCheck(currentPos, self.obstacles)==1:  # catch if currently in an obstacle
@@ -68,8 +72,8 @@ class dynObsPlanner():
                 currentPos[1] = targetnode[1]
                 t = t - 1
             else:
-                currentPos[1] = currentPos[1] + V * dt
-                currentPos[0] = currentPos[0] + V * dt
+                currentPos[1] = currentPos[1] + xvel * dt
+                currentPos[0] = currentPos[0] + zvel * dt
 
         # Gotta check that last instruction
         if self.obsCheck(currentPos, self.obstacles)==1:  # catch if currently in an obstacle
@@ -112,6 +116,7 @@ class dynObsPlanner():
 
     def initplot(self, goal,
                  obstacles,origin):  # initializes plot by drawing obstacles, goal, and origin as well as setting the axes
+        plt.imshow(obstacles.T, interpolation='nearest')  # show 2D representation of map
         plt.scatter(goal[0], goal[1], s=25, c='g')
         plt.scatter(origin[0], origin[1], s=25, c='r')
         plt.xlim(0, self.maxcoords[0])
@@ -119,17 +124,14 @@ class dynObsPlanner():
 
     def drawparentlines(self, nodelist,origin):  # draws connecting lines between parent and child nodes
         filterlist = [origin]
-        print(origin)
+
         for n in nodelist:
             print(n)
             if n[2] == 0:
-                print('hi')
                 pass
             else:
-                print('hi')
                 filterlist.append(n)
         for node in filterlist:  # plot each "jump" from child node to parent node
-            print('hi')
             if (node == nodelist[node[2]]):
                 pass
             else:
@@ -140,11 +142,12 @@ class dynObsPlanner():
 
 
     def dyncheck(self,start,goal, verbose=True, plotting=True):  # Main implementation of RRT
+        origin = start + [0,0]
         xg = []
         yg = []
-        nodesList = [start]
+        nodesList = [origin]
         cg = []
-        self.initplot(goal, self.obstacles,start)  # initialize plot
+        self.initplot(goal, self.obstacles,origin)  # initialize plot
 
         for k in range(0, self.N):  # create (or attempt to create) N nodes
             if k % self.sweetener != 0:
@@ -153,19 +156,19 @@ class dynObsPlanner():
                 xrand = goal
             xnear = self.findclosest(nodesList, xrand)  # find the nearest node to the random point
             xnew = self.takestep(xnear, xrand, nodesList)  # take one step towards the random point from the nearest node and create a new node
-            [goalbool, goalpath] = self.checkgoal(nodesList, xnew, goal,start)  # check the new node to see if it's in the goal zone
+            [goalbool, goalpath] = self.checkgoal(nodesList, xnew, goal,origin)  # check the new node to see if it's in the goal zone
             if (goalbool):
                 [xg, yg, zg, cg] = list(
                     zip(*goalpath))  # If it does succeed, stop creating new nodes and return the goal path
                 break
             else:  # otherwise, just add it to the list and continue
                 nodesList.append(xnew)
-                print(nodesList)
             if verbose:  # debug info, only dump if verbose
                 print(k)
+        print(nodesList)
         if plotting:  # Plot if that's enabled
             print('got here')
-            self.drawparentlines(nodesList,start)
+            self.drawparentlines(nodesList,origin)
             print('and here')
             if goalbool:
                 plt.plot(xg, yg, 'y')
